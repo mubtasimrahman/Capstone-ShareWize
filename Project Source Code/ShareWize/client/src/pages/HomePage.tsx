@@ -1,15 +1,15 @@
 import React from "react";
 import Introduction from "../components/Introduction/Introduction";
 import { Navbar } from "../components/Navbar/Navbar";
+import "./HomePage.css";
 
 function Homepage() {
   return (
     <>
-      
-        {/* <header>
+      {/* <header>
           <h1>Expense Manager</h1>
         </header> */}
-        {/* <nav>
+      {/* <nav>
           <ul>
             <li>
               <Link to="/dashboard">Dashboard</Link>
@@ -25,19 +25,18 @@ function Homepage() {
             </li>
           </ul>
         </nav> */}
-        <div className="container-fluid">
-          <div className="row">
-            <div className="col">
-              <Navbar></Navbar>
-            </div>
-          </div>
-          <div className="row">
-            <div className="col">
-            <Introduction></Introduction>
-            
-            </div>
+      <div className="container-fluid">
+        <div className="row">
+          <div className="col">
+            <Navbar></Navbar>
           </div>
         </div>
+        <div className="row intro">
+          <div className="col">
+            <Introduction></Introduction>
+          </div>
+        </div>
+      </div>
     </>
   );
 }

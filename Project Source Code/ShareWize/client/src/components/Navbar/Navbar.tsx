@@ -5,7 +5,7 @@ export const Navbar = () => {
     <div id="mainNavigation">
       <nav role="navigation">
         <div className="text-center border-bottom">
-          <img src="src/assets/logo2.png" width="200" height="200" />
+          <h1><span>S</span>hare<span>W</span>ize</h1>
         </div>
       </nav>
       <div className="navbar-expand-md">

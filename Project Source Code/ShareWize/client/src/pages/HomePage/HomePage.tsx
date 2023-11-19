@@ -1,9 +1,9 @@
 import React from "react";
-import Introduction from "../components/Introduction/Introduction";
-import { Navbar } from "../components/Navbar/Navbar";
+import Introduction from "../../components/Introduction/Introduction";
+import { Navbar } from "../../components/Navbar/Navbar";
 import "./HomePage.css";
 
-function Homepage() {
+function HomePage() {
   return (
     <>
       {/* <header>
@@ -26,11 +26,6 @@ function Homepage() {
           </ul>
         </nav> */}
       <div className="container-fluid">
-        <div className="row">
-          <div className="col">
-            <Navbar></Navbar>
-          </div>
-        </div>
         <div className="row intro">
           <div className="col">
             <Introduction></Introduction>
@@ -41,4 +36,4 @@ function Homepage() {
   );
 }
 
-export default Homepage;
+export default HomePage;

@@ -5,7 +5,11 @@ export const Navbar = () => {
     <div id="mainNavigation">
       <nav role="navigation">
         <div className="text-center border-bottom">
-          <h1><span>S</span>hare<span>W</span>ize</h1>
+          <li>
+            <a className="nav-link" href="/">
+              <h1><span>S</span>hare<span>W</span>ize</h1>
+            </a>
+          </li>
         </div>
       </nav>
       <div className="navbar-expand-md">
@@ -39,7 +43,7 @@ export const Navbar = () => {
               </a>
             </li>
             <li className="nav-item">
-              <a className="nav-link" href="#">
+              <a className="nav-link" href="/aboutUs">
                 About Us
               </a>
             </li>

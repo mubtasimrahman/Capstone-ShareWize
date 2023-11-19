@@ -2,6 +2,7 @@ import React from "react";
 import Introduction from "../../components/Introduction/Introduction";
 import { Navbar } from "../../components/Navbar/Navbar";
 import "./HomePage.css";
+import {BrowserRouter, Link} from "react-router-dom"
 
 function HomePage() {
   return (
@@ -9,7 +10,7 @@ function HomePage() {
       {/* <header>
           <h1>Expense Manager</h1>
         </header> */}
-      {/* <nav>
+      <nav>
           <ul>
             <li>
               <Link to="/dashboard">Dashboard</Link>
@@ -24,7 +25,7 @@ function HomePage() {
               <Link to="/profile">Profile</Link>
             </li>
           </ul>
-        </nav> */}
+        </nav>
       <div className="container-fluid">
         <div className="row intro">
           <div className="col">

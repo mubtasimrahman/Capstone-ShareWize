@@ -8,25 +8,21 @@ import ErrorPage from "../pages/ErrorPage/ErrorPage";
 import { Navbar } from "../components/Navbar/Navbar";
 import LogInPage from "../pages/LogInPage/LogInPage";
 
+
 function App() {
-  useEffect(() => {
-    /*global google*/
-    google.account.id.initialize({
-      
-    })
-  }, []);
+  
   return (
     <div className={styles.darkMode}>
-    <Router>
-      <Navbar/>
-      <Routes>
-        <Route path='/' element={<HomePage/>}/>
-        <Route path='/aboutUs' element={<AboutUs/>}/>
-        <Route path='/login' element={<LogInPage/>}/>
+      <Router>
+        <Navbar />
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/aboutUs" element={<AboutUs />} />
+          <Route path="/login" element={<LogInPage />} />
 
-        <Route path='*' element={<ErrorPage/>}/>
-      </Routes>
-    </Router>
+          <Route path="*" element={<ErrorPage />} />
+        </Routes>
+      </Router>
     </div>
   );
 }

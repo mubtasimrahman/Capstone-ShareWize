@@ -1,12 +1,15 @@
+import { Link, useNavigate } from "react-router-dom";
 import "./Navbar.css";
 
 export const Navbar = () => {
+  const navigate = useNavigate();
+  
   return (
     <div id="mainNavigation">
       <nav role="navigation">
         <div className="text-center border-bottom">
           <li>
-            <a className="nav-link" href="/">
+            <a className="nav-link" onClick={()=>navigate('/')}>
               <h1><span>S</span>hare<span>W</span>ize</h1>
             </a>
           </li>
@@ -33,18 +36,13 @@ export const Navbar = () => {
         >
           <ul className="navbar-nav mx-auto ">
             <li className="nav-item">
-              <a className="nav-link" aria-current="page" href="#">
-                Sign up
-              </a>
-            </li>
-            <li className="nav-item">
-              <a className="nav-link" href="#">
+              <a className="nav-link" onClick={()=>navigate('/login')}>
                 Log in
               </a>
             </li>
             <li className="nav-item">
-              <a className="nav-link" href="/aboutUs">
-                About Us
+              <a className="nav-link" onClick={()=>navigate('/aboutUs')}>
+                  About Us
               </a>
             </li>
             {/* <li className="nav-item dropdown">

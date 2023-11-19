@@ -6,23 +6,19 @@ import styles from "./App.module.css";
 import AboutUs from "../pages/AboutUs/AboutUs";
 import ErrorPage from "../pages/ErrorPage/ErrorPage";
 import { Navbar } from "../components/Navbar/Navbar";
+import LogInPage from "../pages/LogInPage/LogInPage";
 
 function App() {
   return (
     <div className={styles.darkMode}>
     <Router>
-      <Navbar/>{
-        //chamge this to header
-      }
+      <Navbar/>
       <Routes>
         <Route path='/' element={<HomePage/>}/>
         <Route path='/aboutUs' element={<AboutUs/>}/>
+        <Route path='/login' element={<LogInPage/>}/>
 
         <Route path='*' element={<ErrorPage/>}/>
-        {
-        //<Route path='/aboutUs' element={<AboutUs/>}/>
-        //<Route path='/login' element={<LogIn/>}/>
-        } 
       </Routes>
     </Router>
     </div>

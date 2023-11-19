@@ -1,15 +1,10 @@
-import React from "react";
 import Introduction from "../../components/Introduction/Introduction";
-import { Navbar } from "../../components/Navbar/Navbar";
 import "./HomePage.css";
-import {BrowserRouter, Link} from "react-router-dom"
+import { Link} from "react-router-dom"
 
 function HomePage() {
   return (
     <>
-      {/* <header>
-          <h1>Expense Manager</h1>
-        </header> */}
       <nav>
           <ul>
             <li>

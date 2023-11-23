@@ -39,6 +39,7 @@ If you are developing a production application, we recommend updating the config
 
 
 ## New branch
+
 - git checkout -b <branch-name>
 - git push origin <branch-name> 
       - this will push your existing branch to the new branch

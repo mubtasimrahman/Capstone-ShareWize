@@ -16,10 +16,11 @@ dotenv.config()
 
 
 const config = {
-    user: 'adminsharewize',
-    password: 'Sh4reW1ze123.',
-    server: 'sharewize-1.cci3zj5kplom.ca-central-1.rds.amazonaws.com:1433',
-    database: 'sharewize-1',
+    user: "adminsharewize",
+    password: "Sh4reW1ze123.",
+    server: "sharewize-1.cci3zj5kplom.ca-central-1.rds.amazonaws.com",
+    port: 1433,
+    database: "",
     options: {
         encrypt: true, // Use this option if you're on Windows Azure
     },
@@ -59,8 +60,8 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 // Middleware
-app.use(notFound)
-app.use(errorHandler)
+//app.use(notFound)
+//app.use(errorHandler)
 
 const PORT = process.env.PORT || 8000
 app.listen(

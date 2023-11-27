@@ -1,7 +1,5 @@
 import { GoogleLogin, GoogleCredentialResponse } from "@react-oauth/google";
 import axios from "axios";
-import {  useSelector } from "react-redux/es/hooks/useSelector";
-import { RootState } from "../../App/store/store";
 
 function Google() {
   const handleLoginSuccess = (credentialResponse: GoogleCredentialResponse) => {

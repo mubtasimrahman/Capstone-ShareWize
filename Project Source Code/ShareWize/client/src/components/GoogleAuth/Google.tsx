@@ -1,4 +1,4 @@
-import { GoogleLogin } from "@react-oauth/google";
+/*import { GoogleLogin } from "@react-oauth/google";
 import { jwtDecode } from "jwt-decode";
 import { useState } from "react";
 
@@ -28,3 +28,39 @@ function Google() {
 }
 
 export default Google;
+*/
+
+import { CredentialResponse, GoogleLogin } from "@react-oauth/google";
+import { jwtDecode } from "jwt-decode";
+import { useDispatch } from "react-redux";
+import { loginSuccess, logout } from '../../App/store/actions/authActions'; // Replace with the actual path
+
+function Google() {
+  const dispatch = useDispatch();
+
+  const handleLoginSuccess = (credentialResponse: CredentialResponse) => {
+    console.log(credentialResponse);
+    if (credentialResponse.credential) {
+      const userObject = jwtDecode(credentialResponse.credential);
+      console.log(userObject);
+      dispatch(loginSuccess(userObject)); // Dispatch the login success action
+    } else {
+      console.error("Credential is undefined");
+    }
+  };
+
+  const handleLoginError = () => {
+    console.log("Login Failed");
+  };
+
+  return (
+    <GoogleLogin
+      useOneTap
+      onSuccess={handleLoginSuccess}
+      onError={handleLoginError}
+    />
+  );
+}
+
+export default Google;
+

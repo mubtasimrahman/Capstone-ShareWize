@@ -1,19 +1,29 @@
-import { createSlice } from '@reduxjs/toolkit'
-import { IAuthState } from '../state/IAuthState'
+// authReducer.ts
+import { AuthAction } from '../actions/authActions';
+import { IAuthState } from '../state/IAuthState';
 
 const initialState: IAuthState = {
-  loading: false,
-  userInfo: {}, // for user object
-  userToken: '', // for storing the JWT
-  error: '',
-  success: false, // for monitoring the registration process.
-}
+  authenticated: false,
+  user: null,
+};
 
-const authSlice = createSlice({
-  name: 'auth',
-  initialState,
-  reducers: {},
-  extraReducers: {},
-})
+const authReducer = (state: IAuthState = initialState, action: AuthAction): IAuthState => {
+  switch (action.type) {
+    case 'LOGIN_SUCCESS':
+      return {
+        ...state,
+        authenticated: true,
+        user: action.payload,
+      };
+    case 'LOGOUT':
+      return {
+        ...state,
+        authenticated: false,
+        user: null,
+      };
+    default:
+      return state;
+  }
+};
 
-export default authSlice.reducer
+export default authReducer;

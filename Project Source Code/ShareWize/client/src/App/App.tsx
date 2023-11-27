@@ -6,20 +6,24 @@ import AboutUs from "../pages/AboutUs/AboutUs";
 import ErrorPage from "../pages/ErrorPage/ErrorPage";
 import { Navbar } from "../components/Navbar/Navbar";
 import LogInPage from "../pages/LogInPage/LogInPage";
+import { Provider } from "react-redux";
+import { store } from "./store/store";
 
 function App() {
   return (
     <div className={styles.darkMode}>
-      <Router>
-        <Navbar />
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/aboutUs" element={<AboutUs />} />
-          <Route path="/login" element={<LogInPage />} />
+      <Provider store={store}>
+        <Router>
+          <Navbar />
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/aboutUs" element={<AboutUs />} />
+            <Route path="/login" element={<LogInPage />} />
 
-          <Route path="*" element={<ErrorPage />} />
-        </Routes>
-      </Router>
+            <Route path="*" element={<ErrorPage />} />
+          </Routes>
+        </Router>
+      </Provider>
     </div>
   );
 }

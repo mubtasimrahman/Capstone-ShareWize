@@ -1,25 +1,39 @@
-import { GoogleLogin } from "@react-oauth/google";
-import { jwtDecode } from "jwt-decode";
-import { useState } from "react";
+import { GoogleLogin, GoogleCredentialResponse } from "@react-oauth/google";
+import axios from "axios";
 
 function Google() {
-  const [user, setUser] = useState({});
+  const handleLoginSuccess = (credentialResponse: GoogleCredentialResponse) => {
+    console.log(credentialResponse);
+
+    if (credentialResponse.credential) {
+      // Send the token to the server using POST
+      axios
+        .post(
+          `http://localhost:8000/api`,
+          {
+            token: credentialResponse.credential,
+          },
+          {
+            headers: {
+              "Content-Type": "application/json",
+            },
+          }
+        )
+        .then((response) => {
+          console.log("Server response:", response.data);
+        })
+        .catch((error) => {
+          console.error("Error sending token to server:", error);
+        });
+    } else {
+      console.error("Credential is undefined");
+    }
+  };
+
   return (
     <GoogleLogin
       useOneTap
-      onSuccess={(credentialResponse) => {
-        console.log(credentialResponse);
-        if (credentialResponse.credential) {
-          // Check if credentialResponse.credential is defined
-          const userObject = jwtDecode(credentialResponse.credential);
-          console.log(userObject);
-          setUser(userObject);
-          console.log(user);
-        } else {
-          // Handle the case where credentialResponse.credential is undefined
-          console.error("Credential is undefined");
-        }
-      }}
+      onSuccess={handleLoginSuccess}
       onError={() => {
         console.log("Login Failed");
       }}

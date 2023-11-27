@@ -1,8 +1,25 @@
 import express, { Request, Response } from "express";
 import * as sql from "mssql";
+import { OAuth2Client, TokenPayload } from "google-auth-library";
+import cors from "cors";
+import bodyParser from "body-parser";
 
 const app = express();
 const port = 8000;
+
+
+// Update cors configuration
+app.use(
+  cors({
+    origin: "http://localhost:5173", // Update with your client's origin
+    methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
+    credentials: true,
+    optionsSuccessStatus: 204,
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
+
+
 
 const config: sql.config = {
   user: "adminsharewize",
@@ -16,31 +33,100 @@ const config: sql.config = {
   },
 };
 
+const CLIENT_ID =
+  "507009074308-bal2u8rup2p4154mp623sg8v197sn23n.apps.googleusercontent.com";
+
 // Route for the root path
 app.get("/", (req: Request, res: Response) => {
   res.send("Hello, this is the root path!");
 });
 
-// Route for the /api path
-app.get("/api", (req: Request, res: Response) => {
-  let pool: sql.ConnectionPool;
-  sql
-    .connect(config)
-    .then((p) => {
-      pool = p;
-      // Insert a user into the Users table
-      return pool.query(`
-        INSERT INTO Users (GoogleId, DisplayName, Email)
-        VALUES ('someGoogleId', 'John Doe', 'john.doe@example.com')
-      `);
-    })
+// Change the server-side code
+app.post("/api", cors(), express.json(), (req: Request, res: Response) => {
+  const token = req.body.token as string;
+  console.log("Received request at /api");
+
+  if (!token) {
+    return res.status(400).send("Token is missing");
+  }
+
+  // Verify and decode the token, then handle the result
+  verifyAndDecodeToken(token)
+    .then((userObject) => insertUserIntoDatabase(userObject))
     .then(() => {
       console.log("User inserted into the Users table.");
       res.send({ users: ["1", "2", "3"] });
     })
-    .catch((err) => {
-      console.error("Error connecting to SQL Server or inserting data:", err);
-      res.status(500).send("Internal Server Error");
+    .catch((error) => {
+      console.error(
+        "Error verifying, decoding, or inserting into the database:",
+        error
+      );
+      res.status(401).send("Unauthorized");
+    })
+    .finally(() => {
+      // Additional cleanup or finalization logic here
+    });
+});
+
+
+const verifyAndDecodeToken = async (token: string): Promise<TokenPayload> => {
+  const client = new OAuth2Client(CLIENT_ID);
+
+  return client
+    .verifyIdToken({
+      idToken: token,
+      audience: CLIENT_ID,
+    })
+    .then((ticket) => {
+      const payload = ticket.getPayload();
+
+      // Check if payload is not undefined before accessing its properties
+      if (payload) {
+        const userid = payload.sub;
+
+        // If needed, perform additional verification or checks here
+
+        return payload;
+      } else {
+        throw new Error("Payload is undefined");
+      }
+    })
+    .catch((error) => {
+      console.error("Error verifying ID token:", error);
+      throw error;
+    });
+};
+
+const insertUserIntoDatabase = async (
+  userObject: TokenPayload
+): Promise<void> => {
+  let pool: sql.ConnectionPool;
+
+  // Connect to the database and insert the user
+  return sql
+    .connect(config)
+    .then((p) => {
+      pool = p;
+
+      // Insert a user into the Users table
+      return pool.query(`
+        INSERT INTO Users (GoogleId, DisplayName, Email)
+        VALUES ('${userObject.sub}', '${userObject.name}', '${userObject.email}')
+      `);
+    })
+    .then((result) => {
+      // Handle the result of the query if needed
+      console.log("Query result:", result);
+
+      // You might want to perform additional logic based on the result
+
+      // Return void since this function is supposed to return Promise<void>
+      return Promise.resolve();
+    })
+    .catch((error) => {
+      console.error("Error connecting to SQL Server or inserting data:", error);
+      throw error;
     })
     .finally(() => {
       // Close the SQL Server connection
@@ -48,7 +134,7 @@ app.get("/api", (req: Request, res: Response) => {
         pool.close();
       }
     });
-});
+};
 
 app.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);

@@ -1,4 +1,3 @@
-import React, { useEffect } from "react";
 import { Route, BrowserRouter as Router, Routes } from "react-router-dom";
 import HomePage from "../pages/HomePage/HomePage";
 import "./App.css";
@@ -9,7 +8,6 @@ import { Navbar } from "../components/Navbar/Navbar";
 import LogInPage from "../pages/LogInPage/LogInPage";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import Google from "../components/GoogleAuth/Google";
-
 
 function App() {
   return (

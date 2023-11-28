@@ -24,9 +24,13 @@ function GroupForm({ setGroupId }: GroupFormProps) {
         }
       )
       .then((response) => {
-        console.log("Group creation response:", response.data);
-        const groupId = response.data; // Assuming the server directly returns the groupId
-        setGroupId(groupId); // Update the local state with the groupId
+        console.log("Group creation response:", response);
+      
+        if (response.data) {
+          const groupId = response.data; // Assuming the server directly returns the groupId
+          setGroupId(groupId); // Update the local state with the groupId
+        }
+      
         // Handle the success response here
       })
       .catch((error) => {

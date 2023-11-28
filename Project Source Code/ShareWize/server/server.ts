@@ -50,7 +50,7 @@ app.post(
       return res.status(400).send("Group name and creator token are required");
     }
 
-    // Verify and decode the creator's token
+    
     // Insert the group into the database
     insertGroupIntoDatabase(groupName)
       .then(() => {

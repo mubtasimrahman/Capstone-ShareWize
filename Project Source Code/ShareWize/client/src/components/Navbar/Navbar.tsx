@@ -3,16 +3,16 @@ import "./Navbar.css";
 
 export const Navbar = () => {
   const navigate = useNavigate();
-  
+
   return (
     <div id="mainNavigation">
       <nav role="navigation">
         <div className="text-center border-bottom">
-          <li>
-            <a className="nav-link" onClick={()=>navigate('/')}>
-              <h1><span>S</span>hare<span>W</span>ize</h1>
-            </a>
-          </li>
+          <a className="nav-link" onClick={() => navigate("/")}>
+            <h1>
+              <span>S</span>hare<span>W</span>ize
+            </h1>
+          </a>
         </div>
       </nav>
       <div className="navbar-expand-md">
@@ -36,13 +36,13 @@ export const Navbar = () => {
         >
           <ul className="navbar-nav mx-auto ">
             <li className="nav-item">
-              <a className="nav-link" onClick={()=>navigate('/login')}>
+              <a className="nav-link" onClick={() => navigate("/login")}>
                 Log in
               </a>
             </li>
             <li className="nav-item">
-              <a className="nav-link" onClick={()=>navigate('/aboutUs')}>
-                  About Us
+              <a className="nav-link" onClick={() => navigate("/aboutUs")}>
+                About Us
               </a>
             </li>
             {/* <li className="nav-item dropdown">

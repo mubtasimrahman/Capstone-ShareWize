@@ -2,11 +2,9 @@ import express, { Request, Response } from "express";
 import * as sql from "mssql";
 import { OAuth2Client, TokenPayload } from "google-auth-library";
 import cors from "cors";
-import bodyParser from "body-parser";
 
 const app = express();
 const port = 8000;
-
 
 // Update cors configuration
 app.use(
@@ -18,8 +16,6 @@ app.use(
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
-
-
 
 const config: sql.config = {
   user: "adminsharewize",
@@ -41,7 +37,37 @@ app.get("/", (req: Request, res: Response) => {
   res.send("Hello, this is the root path!");
 });
 
-// Change the server-side code
+app.post(
+  "/createGroup",
+  cors(),
+  express.json(),
+  (req: Request, res: Response) => {
+    // const { groupName, creatorToken } = req.body;
+    const { groupName } = req.body;
+
+    // Check if required parameters are present
+    if (!groupName) {
+      return res.status(400).send("Group name and creator token are required");
+    }
+
+    // Verify and decode the creator's token
+    // Insert the group into the database
+    insertGroupIntoDatabase(groupName)
+      .then(() => {
+        // Respond with success
+        res.status(201).send("Group created successfully");
+      })
+      .catch((error) => {
+        console.error("Error creating group:", error);
+        res.status(500).send("Internal Server Error");
+      })
+      .finally(() => {
+        // Additional cleanup or finalization logic here
+      });
+  }
+);
+
+// Handling logging in
 app.post("/api", cors(), express.json(), (req: Request, res: Response) => {
   const token = req.body.token as string;
   console.log("Received request at /api");
@@ -68,7 +94,6 @@ app.post("/api", cors(), express.json(), (req: Request, res: Response) => {
       // Additional cleanup or finalization logic here
     });
 });
-
 
 const verifyAndDecodeToken = async (token: string): Promise<TokenPayload> => {
   const client = new OAuth2Client(CLIENT_ID);
@@ -126,6 +151,44 @@ const insertUserIntoDatabase = async (
     })
     .catch((error) => {
       console.error("Error connecting to SQL Server or inserting data:", error);
+      throw error;
+    })
+    .finally(() => {
+      // Close the SQL Server connection
+      if (pool) {
+        pool.close();
+      }
+    });
+};
+
+const insertGroupIntoDatabase = async (groupName: string): Promise<number> => {
+  let pool: sql.ConnectionPool;
+
+  // Connect to the database and insert the group
+  return sql
+    .connect(config)
+    .then((p) => {
+      pool = p;
+
+      // Insert a group into the Groups table
+      return pool.query(`
+        INSERT INTO Groups (GroupName)
+        OUTPUT INSERTED.GroupId
+        VALUES ('${groupName}')
+      `);
+    })
+    .then((result) => {
+      // Handle the result of the query if needed
+      console.log("Group creation result:", result);
+
+      // Return the groupId
+      return result.recordset[0].GroupId;
+    })
+    .catch((error) => {
+      console.error(
+        "Error connecting to SQL Server or inserting group:",
+        error
+      );
       throw error;
     })
     .finally(() => {

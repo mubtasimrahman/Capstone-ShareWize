@@ -8,7 +8,6 @@ function GetStarted() {
 
   return (
     <div className='container-fluid'>
-      <h1>Get Started</h1>
       <GroupForm setGroupId={setGroupId} />
       {groupId && (
         <>

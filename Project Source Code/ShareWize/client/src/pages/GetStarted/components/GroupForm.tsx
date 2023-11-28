@@ -7,7 +7,7 @@ interface GroupFormProps {
 
 function GroupForm({ setGroupId }: GroupFormProps) {
   const [groupName, setGroupName] = useState("");
-  const [creatorToken, setCreatorToken] = useState(""); // Assuming you have a way to get the creator's token
+  // const [creatorToken, setCreatorToken] = useState(""); // Assuming you have a way to get the creator's token
 
   const handleCreateGroup = () => {
     axios
@@ -15,7 +15,7 @@ function GroupForm({ setGroupId }: GroupFormProps) {
         "http://localhost:8000/createGroup",
         {
           groupName: groupName,
-          creatorToken: creatorToken,
+          // creatorToken: creatorToken,
         },
         {
           headers: {
@@ -47,14 +47,14 @@ function GroupForm({ setGroupId }: GroupFormProps) {
         />
       </label>
       {/* Assuming you have a way to get the creator's token */}
-      <label>
+      {/* <label>
         Creator Token:
         <input
           type="text"
           value={creatorToken}
           onChange={(e) => setCreatorToken(e.target.value)}
         />
-      </label>
+      </label> */}
       <button onClick={handleCreateGroup}>Create Group</button>
     </div>
   );

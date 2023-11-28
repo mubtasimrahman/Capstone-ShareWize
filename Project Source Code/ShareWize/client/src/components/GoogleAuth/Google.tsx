@@ -7,7 +7,7 @@ import { jwtDecode } from "jwt-decode";
 function Google() {
   const dispatch = useDispatch();
   const handleLoginSuccess = (credentialResponse: GoogleCredentialResponse) => {
-    console.log(credentialResponse);
+    // console.log(credentialResponse);
 
     if (credentialResponse.credential) {
       // Send the token to the server using POST

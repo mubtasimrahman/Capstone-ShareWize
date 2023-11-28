@@ -8,6 +8,7 @@ import { Navbar } from "../components/Navbar/Navbar";
 import LogInPage from "../pages/LogInPage/LogInPage";
 import { Provider } from "react-redux";
 import { store } from "./store/store";
+// import GetStarted from "../pages/GetStarted/GetStarted";
 
 function App() {
   return (
@@ -19,7 +20,7 @@ function App() {
             <Route path="/" element={<HomePage />} />
             <Route path="/aboutUs" element={<AboutUs />} />
             <Route path="/login" element={<LogInPage />} />
-
+            {/* <Route path="/getStarted" element={<GetStarted />} /> */}
             <Route path="*" element={<ErrorPage />} />
           </Routes>
         </Router>

@@ -1,8 +1,7 @@
 import { GoogleLogin, GoogleCredentialResponse } from "@react-oauth/google";
 import axios from "axios";
-import { useDispatch, useSelector } from "react-redux";
-import { RootState } from "../../App/store/store";
-import { LoginSuccessAction, loginSuccess } from "../../App/store/actions/authActions";
+import { useDispatch } from "react-redux";
+import { loginSuccess } from "../../App/store/actions/authActions";
 import { jwtDecode } from "jwt-decode";
 
 function Google() {
@@ -38,7 +37,6 @@ function Google() {
     }
   };
 
-
   return (
     <GoogleLogin
       useOneTap
@@ -51,7 +49,3 @@ function Google() {
 }
 
 export default Google;
-
-function dispatch(arg0: LoginSuccessAction) {
-  throw new Error("Function not implemented.");
-}

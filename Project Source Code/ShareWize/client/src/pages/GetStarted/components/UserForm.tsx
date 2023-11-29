@@ -26,7 +26,7 @@ function UserForm({ groupId }: UserFormProps) {
 
   return (
     <div>
-      <h2>Add User to Group</h2>
+      <h2 style={{color:'white'}}>Add User to Group</h2>
       <input
         type="text"
         placeholder="User Name"

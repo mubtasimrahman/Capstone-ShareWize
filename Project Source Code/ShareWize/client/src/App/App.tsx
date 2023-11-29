@@ -9,18 +9,24 @@ import LogInPage from "../pages/LogInPage/LogInPage";
 import { Provider } from "react-redux";
 import { store } from "./store/store";
 import GetStarted from "../pages/GetStarted/GetStarted";
+import Dashboard from "../pages/DashboardPage/Dashboard";
+import Expenses from "../pages/ExpensesPage/Expenses";
+import Profile from "../pages/ProfilePage/Profile";
 
 function App() {
   return (
-    <div className={styles.lightMode}>
+    <div className={styles.darkMode}>
       <Provider store={store}>
         <Router>
           <Navbar />
           <Routes>
             <Route path="/" element={<HomePage />} />
+            <Route path="/dashboard" element={<Dashboard/>} />
+            <Route path="/expenses" element={<Expenses />} />
+            <Route path="/profile" element={<Profile />} />
             <Route path="/aboutUs" element={<AboutUs />} />
             <Route path="/login" element={<LogInPage />} />
-            <Route path="/getStarted" element={<GetStarted />} />
+            <Route path="/groups" element={<GetStarted />} />
             <Route path="*" element={<ErrorPage />} />
           </Routes>
         </Router>

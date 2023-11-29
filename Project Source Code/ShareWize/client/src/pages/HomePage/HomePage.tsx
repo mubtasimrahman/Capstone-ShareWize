@@ -1,25 +1,17 @@
+import { useSelector } from "react-redux";
 import Introduction from "../../components/Introduction/Introduction";
 import "./HomePage.css";
 import { Link} from "react-router-dom"
+import { RootState } from "../../App/store/store";
 
 function HomePage() {
+  const authenticated = useSelector((state: RootState) => state.auth.authenticated);
+
   return (
     <>
       <nav>
-          <ul>
-            <li>
-              <Link to="/dashboard">Dashboard</Link>
-            </li>
-            <li>
-              <Link to="/expenses">Expenses</Link>
-            </li>
-            <li>
-              <Link to="/groups">Groups</Link>
-            </li>
-            <li>
-              <Link to="/profile">Profile</Link>
-            </li>
-          </ul>
+      { authenticated ? (<></>
+        ) : null }
         </nav>
       <div className="container-fluid">
         <div className="row intro">

@@ -37,6 +37,51 @@ app.get("/", (req: Request, res: Response) => {
   res.send("Hello, this is the root path!");
 });
 
+app.get("/getUser/:googleId", cors(), async (req: Request, res: Response) => {
+  const googleId = req.params.googleId;
+
+  if (!googleId) {
+    return res.status(400).send("Google ID is missing");
+  }
+
+  try {
+    const user = await getUserByGoogleId(googleId);
+    if (user) {
+      res.json(user);
+    } else {
+      res.status(404).send("User not found");
+    }
+  } catch (error) {
+    console.error("Error fetching user from the database:", error);
+    res.status(500).send("Internal Server Error");
+  }
+});
+
+const getUserByGoogleId = async (googleId: string): Promise<any | null> => {
+  let pool: sql.ConnectionPool | null = null;
+
+try {
+  // Connect to the database and fetch the user by Google ID
+  pool = await sql.connect(config);
+
+  const result: sql.IResult<string> = await pool.query(`
+    SELECT * FROM Users
+    WHERE GoogleId = '${googleId}'
+  `);
+
+  // Return the user or null if not found
+  return result.recordset.length > 0 ? result.recordset[0] : null;
+} catch (error) {
+  console.error("Error connecting to SQL Server or fetching user:", error);
+  throw error;
+} finally {
+  // Close the SQL Server connection
+  if (pool) {
+    pool.close();
+  }
+  }
+};
+
 app.post(
   "/createGroup",
   cors(),

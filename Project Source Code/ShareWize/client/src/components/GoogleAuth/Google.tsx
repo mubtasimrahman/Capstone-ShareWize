@@ -11,6 +11,7 @@ function Google() {
 
     if (credentialResponse.credential) {
       // Send the token to the server using POST
+      console.log(credentialResponse.credential)
       const userObject = jwtDecode(credentialResponse.credential);
       axios
         .post(

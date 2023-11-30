@@ -11,7 +11,7 @@ function ExpenseForm({ groupId }: ExpenseFormProps) {
 
   const addExpense = () => {
     axios
-      .post(`http://localhost:8000/api/groups/${groupId}/expenses`, {
+      .post(`http://localhost:8000/groups/${groupId}/expenses`, {
         description,
         amount: parseFloat(amount),
       })

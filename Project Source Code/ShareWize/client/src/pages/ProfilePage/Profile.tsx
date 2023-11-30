@@ -53,7 +53,10 @@ export default function Profile() {
             `http://localhost:8000/getUser/${googleId}`
           );
           setCurrentUser(response.data);
-          console.log(currentUser);
+          console.log(
+            "Current user wont be logged here as useEffect is async:",
+            currentUser
+          );
           // Dispatch action to update Redux store with user information
           //dispatch(loginSuccess(user)); // Use your action creator here
         } catch (error) {
@@ -72,7 +75,7 @@ export default function Profile() {
       Profile
       <div style={{ color: "white" }}>
         <div>
-          <img src={image?.toString()} />
+          <img src={image} />
 
           <div>{currentUser?.DisplayName}</div>
           <div>{currentUser?.Email}</div>

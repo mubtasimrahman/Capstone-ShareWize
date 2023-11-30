@@ -7,7 +7,6 @@ interface GroupFormProps {
 
 function GroupForm({ setGroupId }: GroupFormProps) {
   const [groupName, setGroupName] = useState("");
-  // const [creatorToken, setCreatorToken] = useState(""); // Assuming you have a way to get the creator's token
 
   const handleCreateGroup = () => {
     axios
@@ -15,7 +14,6 @@ function GroupForm({ setGroupId }: GroupFormProps) {
         "http://localhost:8000/createGroup",
         {
           groupName: groupName,
-          // creatorToken: creatorToken,
         },
         {
           headers: {
@@ -25,24 +23,24 @@ function GroupForm({ setGroupId }: GroupFormProps) {
       )
       .then((response) => {
         console.log("Group creation response:", response);
-      
+
         if (response.data) {
-          const groupId = response.data; // Assuming the server directly returns the groupId
+          const groupId = response.data.groupID; // Assuming the server directly returns the groupId
           setGroupId(groupId); // Update the local state with the groupId
+          console.log(groupId);
         }
-      
+
         // Handle the success response here
       })
       .catch((error) => {
         console.error("Error creating group:", error);
-        // Handle the error here
       });
   };
 
   return (
     <div>
-      <h2>Create a New Group</h2>
-      <label>
+      <h2 style={{ color: "white" }}>Create a New Group</h2>
+      <label style={{ color: "white" }}>
         Group Name:
         <input
           type="text"
@@ -50,15 +48,7 @@ function GroupForm({ setGroupId }: GroupFormProps) {
           onChange={(e) => setGroupName(e.target.value)}
         />
       </label>
-      {/* Assuming you have a way to get the creator's token */}
-      {/* <label>
-        Creator Token:
-        <input
-          type="text"
-          value={creatorToken}
-          onChange={(e) => setCreatorToken(e.target.value)}
-        />
-      </label> */}
+
       <button onClick={handleCreateGroup}>Create Group</button>
     </div>
   );

@@ -37,6 +37,36 @@ app.get("/", (req: Request, res: Response) => {
   res.send("Hello, this is the root path!");
 });
 
+app.post(
+  "/groups/:groupId/users",
+  cors(),
+  express.json(),
+  (req: Request, res: Response) => {
+    const groupId = req.params.groupId;
+    const { userEmail } = req.body; // Change variable name to reflect using email
+
+    // Check if required parameters are present
+    if (!groupId || !userEmail) {
+      // Change variable name to reflect using email
+      return res.status(400).send("Group ID and user email are required"); // Change variable name to reflect using email
+    }
+
+    // Insert the user into the specified group in the database using email
+    insertUserIntoGroupByEmail(groupId, userEmail) // Change variable name to reflect using email
+      .then(() => {
+        // Respond with success
+        res.status(201).send("User added to group successfully");
+      })
+      .catch((error) => {
+        console.error("Error adding user to group:", error);
+        res.status(500).send("Internal Server Error");
+      })
+      .finally(() => {
+        // Any cleanup or additional logic after success or failure
+      });
+  }
+);
+
 app.get("/getUser/:googleId", cors(), async (req: Request, res: Response) => {
   const googleId = req.params.googleId;
 
@@ -57,35 +87,42 @@ app.get("/getUser/:googleId", cors(), async (req: Request, res: Response) => {
   }
 });
 
-
-
 app.post(
   "/createGroup",
   cors(),
   express.json(),
-  (req: Request, res: Response) => {
-    // const { groupName, creatorToken } = req.body;
+  async (req: Request, res: Response) => {
     const { groupName } = req.body;
 
     // Check if required parameters are present
     if (!groupName) {
-      return res.status(400).send("Group name and creator token are required");
+      return res.status(400).send("Group name is required");
     }
 
-    
-    // Insert the group into the database
-    insertGroupIntoDatabase(groupName)
-      .then(() => {
-        // Respond with success
-        res.status(201).send("Group created successfully");
-      })
-      .catch((error) => {
-        console.error("Error creating group:", error);
-        res.status(500).send("Internal Server Error");
-      })
-      .finally(() => {
-        // Additional cleanup or finalization logic here
-      });
+    try {
+      // Insert the group into the database
+      await insertGroupIntoDatabase(groupName);
+
+      // Get the group ID after successfully inserting the group
+      const groupID = await getGroupID(groupName);
+
+      // Check if the group exists (groupID is not null)
+      if (groupID !== null) {
+        // Respond with success and send groupID
+        res
+          .status(201)
+          .send({ message: "Group created successfully", groupID });
+      } else {
+        // Return a response indicating the group does not exist
+        res.status(409).send({ message: "Group already exists", groupName });
+      }
+    } catch (error) {
+      console.error("Error creating group:", error);
+      res.status(500).send("Internal Server Error");
+    } finally {
+      // Additional cleanup or finalization logic here
+      // You can access groupID here if needed
+    }
   }
 );
 
@@ -224,26 +261,98 @@ const insertGroupIntoDatabase = async (groupName: string): Promise<number> => {
 const getUserByGoogleId = async (googleId: string): Promise<any | null> => {
   let pool: sql.ConnectionPool | null = null;
 
-try {
-  // Connect to the database and fetch the user by Google ID
-  pool = await sql.connect(config);
+  try {
+    // Connect to the database and fetch the user by Google ID
+    pool = await sql.connect(config);
 
-  const result: sql.IResult<string> = await pool.query(`
+    const result: sql.IResult<string> = await pool.query(`
     SELECT * FROM Users
     WHERE GoogleId = '${googleId}'
   `);
 
-  // Return the user or null if not found
-  return result.recordset.length > 0 ? result.recordset[0] : null;
-} catch (error) {
-  console.error("Error connecting to SQL Server or fetching user:", error);
-  throw error;
-} finally {
-  // Close the SQL Server connection
-  if (pool) {
-    pool.close();
+    // Return the user or null if not found
+    return result.recordset.length > 0 ? result.recordset[0] : null;
+  } catch (error) {
+    console.error("Error connecting to SQL Server or fetching user:", error);
+    throw error;
+  } finally {
+    // Close the SQL Server connection
+    if (pool) {
+      pool.close();
+    }
   }
+};
+
+async function getGroupID(groupName: string) {
+  try {
+    const pool = await sql.connect(config);
+    const result = await pool
+      .request()
+      .input("groupName", sql.NVarChar, groupName)
+      .query("SELECT GroupId FROM Groups WHERE GroupName = @groupName");
+
+    if (result.recordset.length > 0) {
+      // Group exists, return the group ID
+      return result.recordset[0].GroupId;
+    } else {
+      // Group doesn't exist, return null
+      return null;
+    }
+  } catch (error) {
+    console.error("Error getting group ID:", error);
+    throw error;
   }
+}
+
+const insertUserIntoGroupByEmail = async (
+  groupId: string,
+  userEmail: string
+): Promise<void> => {
+  let pool: sql.ConnectionPool;
+
+  // Connect to the database
+  return sql
+    .connect(config)
+    .then(async (p) => {
+      pool = p;
+      const transaction = new sql.Transaction(pool);
+      await transaction.begin();
+
+      try {
+        // Insert a user into the specified group in the GroupMemberships table using email
+        const result = await pool
+          .request()
+          .input("userEmail", sql.NVarChar, userEmail)
+          .input("groupId", sql.Int, groupId).query(`
+            INSERT INTO GroupMemberships (UserId, GroupId)
+            VALUES (
+              (SELECT UserId FROM Users WHERE Email = @userEmail),
+              @groupId
+            )
+          `);
+
+        // Check if any rows were affected
+        if (result.rowsAffected[0] === 0) {
+          // No user found with the specified email
+          throw new Error("User not found");
+        }
+
+        await transaction.commit();
+      } catch (error) {
+        console.error(
+          "Error connecting to SQL Server or inserting data:",
+          error
+        );
+        await transaction.rollback();
+        throw error;
+      }
+    })
+    .finally(() => {
+      // Close the SQL Server connection
+      if (pool) {
+        pool.close();
+      }
+    });
 };
 
 app.listen(port, () => {

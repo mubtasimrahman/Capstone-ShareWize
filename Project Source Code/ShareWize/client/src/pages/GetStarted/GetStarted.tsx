@@ -1,13 +1,13 @@
-import React, { useState } from 'react';
-import GroupForm from './components/GroupForm';
-import UserForm from './components/UserForm';
-import ExpenseForm from './components/ExpenseForm';
+import React, { useState } from "react";
+import GroupForm from "./components/GroupForm";
+import UserForm from "./components/UserForm";
+import ExpenseForm from "./components/ExpenseForm";
 
 function GetStarted() {
   const [groupId, setGroupId] = useState<number | null>(null);
 
   return (
-    <div className='container-fluid'>
+    <div className="container-fluid">
       <GroupForm setGroupId={setGroupId} />
       {groupId && (
         <>

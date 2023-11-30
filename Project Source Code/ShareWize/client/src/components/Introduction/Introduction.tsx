@@ -1,9 +1,11 @@
 import React from "react";
 import "./Introduction.css"; // Import your CSS file
 import { useNavigate } from "react-router-dom";
-
+import { useSelector } from "react-redux";
+import { RootState } from "../../App/store/store";
 
 function Introduction() {
+  const googleId = useSelector((state: RootState) => state.auth.user?.sub);
   const navigate = useNavigate();
   return (
     <section className="introduction">
@@ -39,7 +41,10 @@ function Introduction() {
           </p>
         </div>
       </div>
-      <button className="cta-button" onClick={() => navigate("/GetStarted")}>
+      <button
+        className="cta-button"
+        onClick={() => (googleId ? navigate("/groups") : navigate("/login"))}
+      >
         Get Started
       </button>
     </section>

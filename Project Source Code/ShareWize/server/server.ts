@@ -57,30 +57,7 @@ app.get("/getUser/:googleId", cors(), async (req: Request, res: Response) => {
   }
 });
 
-const getUserByGoogleId = async (googleId: string): Promise<any | null> => {
-  let pool: sql.ConnectionPool | null = null;
 
-try {
-  // Connect to the database and fetch the user by Google ID
-  pool = await sql.connect(config);
-
-  const result: sql.IResult<string> = await pool.query(`
-    SELECT * FROM Users
-    WHERE GoogleId = '${googleId}'
-  `);
-
-  // Return the user or null if not found
-  return result.recordset.length > 0 ? result.recordset[0] : null;
-} catch (error) {
-  console.error("Error connecting to SQL Server or fetching user:", error);
-  throw error;
-} finally {
-  // Close the SQL Server connection
-  if (pool) {
-    pool.close();
-  }
-  }
-};
 
 app.post(
   "/createGroup",
@@ -242,6 +219,31 @@ const insertGroupIntoDatabase = async (groupName: string): Promise<number> => {
         pool.close();
       }
     });
+};
+
+const getUserByGoogleId = async (googleId: string): Promise<any | null> => {
+  let pool: sql.ConnectionPool | null = null;
+
+try {
+  // Connect to the database and fetch the user by Google ID
+  pool = await sql.connect(config);
+
+  const result: sql.IResult<string> = await pool.query(`
+    SELECT * FROM Users
+    WHERE GoogleId = '${googleId}'
+  `);
+
+  // Return the user or null if not found
+  return result.recordset.length > 0 ? result.recordset[0] : null;
+} catch (error) {
+  console.error("Error connecting to SQL Server or fetching user:", error);
+  throw error;
+} finally {
+  // Close the SQL Server connection
+  if (pool) {
+    pool.close();
+  }
+  }
 };
 
 app.listen(port, () => {

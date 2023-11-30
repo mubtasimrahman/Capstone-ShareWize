@@ -1,7 +1,6 @@
 import { useSelector } from "react-redux";
 import Introduction from "../../components/Introduction/Introduction";
 import "./HomePage.css";
-import { Link} from "react-router-dom"
 import { RootState } from "../../App/store/store";
 
 function HomePage() {

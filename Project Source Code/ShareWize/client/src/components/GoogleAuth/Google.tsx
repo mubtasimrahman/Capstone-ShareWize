@@ -3,9 +3,11 @@ import axios from "axios";
 import { useDispatch } from "react-redux";
 import { loginSuccess } from "../../App/store/actions/authActions";
 import { jwtDecode } from "jwt-decode";
+import { useNavigate } from "react-router-dom";
 
 function Google() {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const handleLoginSuccess = (credentialResponse: GoogleCredentialResponse) => {
     // console.log(credentialResponse);
 
@@ -29,6 +31,7 @@ function Google() {
           console.log("Server response:", response.data);
           console.log(userObject);
           dispatch(loginSuccess(userObject));
+          navigate("/")
         })
         .catch((error) => {
           console.error("Error sending token to server:", error);

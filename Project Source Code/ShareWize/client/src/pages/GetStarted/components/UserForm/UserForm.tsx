@@ -1,9 +1,10 @@
+// UserForm.tsx
 import React, { useState } from "react";
 import axios from "axios";
 import "./UserForm.css";
 
 interface UserFormProps {
-  groupId: number;
+  groupId: number|null;
 }
 
 function UserForm({ groupId }: UserFormProps) {
@@ -35,7 +36,7 @@ function UserForm({ groupId }: UserFormProps) {
   };
 
   return (
-    <div className="container">
+    <div className={`container-user ${groupId === null ? 'hidden' : ''}`}>
       <div className="section">
         <h2>Add User to Group</h2>
         <input

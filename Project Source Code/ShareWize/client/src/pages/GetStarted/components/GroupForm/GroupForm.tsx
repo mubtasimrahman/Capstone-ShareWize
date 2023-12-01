@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import axios from "axios";
-import "./GroupForm.css"
+import "./GroupForm.css";
 
 interface GroupFormProps {
   setGroupId: React.Dispatch<React.SetStateAction<number | null>>;

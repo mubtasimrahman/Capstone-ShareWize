@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
 import GroupForm from "./components/GroupForm/GroupForm";
-import UserForm from "./components/UserFrom/UserForm";
+import UserForm from "./components/UserForm/UserForm";
 import ExpenseForm from "./components/ExpenseForm/ExpenseForm";
 import { useSelector } from "react-redux";
 import { RootState } from "../../App/store/store";
 import axios from "axios";
+import "./GetStarted.css";
 
 interface userObject {
   UserId: number;
@@ -13,13 +14,16 @@ interface userObject {
   Email: string;
 }
 
-import "./GetStarted.css";
-
 function GetStarted() {
   const [groupId, setGroupId] = useState<number | null>(null);
-  const [currentUser, setCurrentUser] = useState<userObject>({UserId: 1, GoogleId: 'placeholder', DisplayName: 'test',Email: 'test'});
+  const [currentUser, setCurrentUser] = useState<userObject>({
+    UserId: 1,
+    GoogleId: "placeholder",
+    DisplayName: "test",
+    Email: "test",
+  });
   const googleId = useSelector((state: RootState) => state.auth.user?.sub);
-  
+
   useEffect(() => {
     if (googleId) {
       // Move the logic directly into this useEffect
@@ -45,16 +49,13 @@ function GetStarted() {
       console.log("Error: googleId is undefined");
     }
   }, [googleId]);
-  
+
   return (
     <div className="container-fluid">
       <GroupForm setGroupId={setGroupId} />
-      {groupId && (
-        <>
-          <UserForm groupId={groupId} />
-          <ExpenseForm groupId={groupId} userId={currentUser.UserId}/>
-        </>
-      )}
+
+      <UserForm groupId={groupId} />
+      <ExpenseForm groupId={groupId} userId={currentUser.UserId} />
     </div>
   );
 }

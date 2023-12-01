@@ -324,11 +324,10 @@ const insertExpenseIntoDatabase = async (
         // Insert an expense into the Expenses table
         const result = await pool
           .request()
-          .input('description', sql.NVarChar, description)
-          .input('amount', sql.Decimal(10, 2), amount)
-          .input('userId', sql.Int, userId)
-          .input('groupId', sql.Int, groupId)
-          .query(`
+          .input("description", sql.NVarChar, description)
+          .input("amount", sql.Decimal(10, 2), amount)
+          .input("userId", sql.Int, userId)
+          .input("groupId", sql.Int, groupId).query(`
             INSERT INTO Expenses (Description, Amount, UserId, GroupId)
             VALUES (@description, @amount, @userId, @groupId)
           `);
@@ -336,12 +335,15 @@ const insertExpenseIntoDatabase = async (
         // Check if any rows were affected
         if (result.rowsAffected[0] === 0) {
           // Unable to insert expense
-          throw new Error('Error adding expense');
+          throw new Error("Error adding expense");
         }
 
         await transaction.commit();
       } catch (error) {
-        console.error('Error connecting to SQL Server or inserting data:', error);
+        console.error(
+          "Error connecting to SQL Server or inserting data:",
+          error
+        );
         await transaction.rollback();
         throw error;
       }
@@ -354,37 +356,36 @@ const insertExpenseIntoDatabase = async (
     });
 };
 
-
 // Endpoint to add an expense to a group
-app.post('/groups/:groupId/expenses',  
-cors(),
-express.json(), 
-async (req: Request, res: Response) => {
+app.post(
+  "/groups/:groupId/expenses",
+  cors(),
+  express.json(),
+  async (req: Request, res: Response) => {
+    console.log("Endpoint hit:", req.url);
+    const groupId = parseInt(req.params.groupId, 10); // Remove extra semicolon
+    const { description, amount, userId } = req.body;
 
-  console.log('Endpoint hit:', req.url);
-  const groupId = parseInt(req.params.groupId, 10); // Remove extra semicolon
-  const { description, amount, userId } = req.body;
+    // Check if required parameters are present
+    if (isNaN(groupId) || !description || !amount || !userId) {
+      return res.status(400).send("Invalid expense data");
+    }
 
-  // Check if required parameters are present
-  if (isNaN(groupId) || !description || !amount || !userId) {
-    return res.status(400).send('Invalid expense data');
+    // Insert the expense into the database
+    insertExpenseIntoDatabase(description, amount, userId, groupId)
+      .then(() => {
+        // Respond with success
+        res.status(201).send("Expense added successfully");
+      })
+      .catch((error) => {
+        console.error("Error adding expense:", error);
+        res.status(500).send("Internal Server Error");
+      })
+      .finally(() => {
+        // Any cleanup or additional logic after success or failure
+      });
   }
-
-  // Insert the expense into the database
-  insertExpenseIntoDatabase(description, amount, userId, groupId)
-    .then(() => {
-      // Respond with success
-      res.status(201).send('Expense added successfully');
-    })
-    .catch((error) => {
-      console.error('Error adding expense:', error);
-      res.status(500).send('Internal Server Error');
-    })
-    .finally(() => {
-      // Any cleanup or additional logic after success or failure
-    });
-});
-
+);
 
 const insertUserIntoGroupByEmail = async (
   groupId: string,
@@ -417,8 +418,7 @@ const insertUserIntoGroupByEmail = async (
         const result = await pool
           .request()
           .input("userEmail", sql.NVarChar, userEmail)
-          .input("groupId", sql.Int, groupId)
-          .query(`
+          .input("groupId", sql.Int, groupId).query(`
             INSERT INTO GroupMembershipsExample (UserId, GroupId)
             VALUES (
               (SELECT UserId FROM Users WHERE Email = @userEmail),
@@ -449,7 +449,6 @@ const insertUserIntoGroupByEmail = async (
       }
     });
 };
-
 
 app.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);

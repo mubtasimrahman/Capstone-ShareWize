@@ -8,10 +8,6 @@ function HomePage() {
 
   return (
     <>
-      <nav>
-      { authenticated ? (<></>
-        ) : null }
-        </nav>
       <div className="container-fluid">
         <div className="row intro">
           <div className="col">

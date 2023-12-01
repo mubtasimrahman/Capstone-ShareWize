@@ -304,6 +304,88 @@ async function getGroupID(groupName: string) {
   }
 }
 
+const insertExpenseIntoDatabase = async (
+  description: string,
+  amount: number,
+  userId: number,
+  groupId: number
+): Promise<void> => {
+  let pool: sql.ConnectionPool;
+
+  // Connect to the database
+  return sql
+    .connect(config)
+    .then(async (p) => {
+      pool = p;
+      const transaction = new sql.Transaction(pool);
+      await transaction.begin();
+
+      try {
+        // Insert an expense into the Expenses table
+        const result = await pool
+          .request()
+          .input('description', sql.NVarChar, description)
+          .input('amount', sql.Decimal(10, 2), amount)
+          .input('userId', sql.Int, userId)
+          .input('groupId', sql.Int, groupId)
+          .query(`
+            INSERT INTO Expenses (Description, Amount, UserId, GroupId)
+            VALUES (@description, @amount, @userId, @groupId)
+          `);
+
+        // Check if any rows were affected
+        if (result.rowsAffected[0] === 0) {
+          // Unable to insert expense
+          throw new Error('Error adding expense');
+        }
+
+        await transaction.commit();
+      } catch (error) {
+        console.error('Error connecting to SQL Server or inserting data:', error);
+        await transaction.rollback();
+        throw error;
+      }
+    })
+    .finally(() => {
+      // Close the SQL Server connection
+      if (pool) {
+        pool.close();
+      }
+    });
+};
+
+
+// Endpoint to add an expense to a group
+app.post('/groups/:groupId/expenses',  
+cors(),
+express.json(), 
+async (req: Request, res: Response) => {
+
+  console.log('Endpoint hit:', req.url);
+  const groupId = parseInt(req.params.groupId, 10); // Remove extra semicolon
+  const { description, amount, userId } = req.body;
+
+  // Check if required parameters are present
+  if (isNaN(groupId) || !description || !amount || !userId) {
+    return res.status(400).send('Invalid expense data');
+  }
+
+  // Insert the expense into the database
+  insertExpenseIntoDatabase(description, amount, userId, groupId)
+    .then(() => {
+      // Respond with success
+      res.status(201).send('Expense added successfully');
+    })
+    .catch((error) => {
+      console.error('Error adding expense:', error);
+      res.status(500).send('Internal Server Error');
+    })
+    .finally(() => {
+      // Any cleanup or additional logic after success or failure
+    });
+});
+
+
 const insertUserIntoGroupByEmail = async (
   groupId: string,
   userEmail: string
@@ -319,12 +401,25 @@ const insertUserIntoGroupByEmail = async (
       await transaction.begin();
 
       try {
+        // Check if the user with the specified email exists
+        const userCheckResult = await pool
+          .request()
+          .input("userEmail", sql.NVarChar, userEmail)
+          .query("SELECT UserId FROM Users WHERE Email = @userEmail");
+
+        // Check if any rows were returned
+        if (userCheckResult.recordset.length === 0) {
+          // No user found with the specified email
+          throw new Error("User not found");
+        }
+
         // Insert a user into the specified group in the GroupMemberships table using email
         const result = await pool
           .request()
           .input("userEmail", sql.NVarChar, userEmail)
-          .input("groupId", sql.Int, groupId).query(`
-            INSERT INTO GroupMemberships (UserId, GroupId)
+          .input("groupId", sql.Int, groupId)
+          .query(`
+            INSERT INTO GroupMembershipsExample (UserId, GroupId)
             VALUES (
               (SELECT UserId FROM Users WHERE Email = @userEmail),
               @groupId
@@ -354,6 +449,7 @@ const insertUserIntoGroupByEmail = async (
       }
     });
 };
+
 
 app.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);

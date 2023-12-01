@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
-import GroupForm from "./components/GroupForm";
-import UserForm from "./components/UserForm";
-import ExpenseForm from "./components/ExpenseForm";
+import GroupForm from "./components/GroupForm/GroupForm";
+import UserForm from "./components/UserFrom/UserForm";
+import ExpenseForm from "./components/ExpenseForm/ExpenseForm";
 import { useSelector } from "react-redux";
 import { RootState } from "../../App/store/store";
 import axios from "axios";
@@ -12,6 +12,8 @@ interface userObject {
   DisplayName: string;
   Email: string;
 }
+
+import "./GetStarted.css";
 
 function GetStarted() {
   const [groupId, setGroupId] = useState<number | null>(null);

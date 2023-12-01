@@ -1,7 +1,8 @@
 import React, { useState } from "react";
-import GroupForm from "./components/GroupForm";
-import UserForm from "./components/UserForm";
-import ExpenseForm from "./components/ExpenseForm";
+import GroupForm from "./components/GroupForm/GroupForm";
+import UserForm from "./components/UserFrom/UserForm";
+import ExpenseForm from "./components/ExpenseForm/ExpenseForm";
+import "./GetStarted.css";
 
 function GetStarted() {
   const [groupId, setGroupId] = useState<number | null>(null);

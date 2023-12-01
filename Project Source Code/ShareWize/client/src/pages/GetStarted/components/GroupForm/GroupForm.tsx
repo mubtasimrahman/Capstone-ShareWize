@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import axios from "axios";
+import "./GroupForm.css"
 
 interface GroupFormProps {
   setGroupId: React.Dispatch<React.SetStateAction<number | null>>;
@@ -38,18 +39,20 @@ function GroupForm({ setGroupId }: GroupFormProps) {
   };
 
   return (
-    <div>
-      <h2 style={{ color: "white" }}>Create a New Group</h2>
-      <label style={{ color: "white" }}>
-        Group Name:
-        <input
-          type="text"
-          value={groupName}
-          onChange={(e) => setGroupName(e.target.value)}
-        />
-      </label>
-
-      <button onClick={handleCreateGroup}>Create Group</button>
+    <div className="container">
+      <div className="section">
+        <h2>Create a New Group</h2>
+        <label>
+          Group Name:
+          <input
+            className="input"
+            type="text"
+            value={groupName}
+            onChange={(e) => setGroupName(e.target.value)}
+          />
+        </label>
+        <button onClick={handleCreateGroup}>Create Group</button>
+      </div>
     </div>
   );
 }

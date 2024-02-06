@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import GroupForm from "./components/GroupForm/GroupForm";
 import UserForm from "./components/UserForm/UserForm";
 import ExpenseForm from "./components/ExpenseForm/ExpenseForm";
+import MyGroups from "./components/MyGroups/MyGroups";
 import { useSelector } from "react-redux";
 import { RootState } from "../../App/store/store";
 import axios from "axios";
@@ -22,6 +23,9 @@ function GetStarted() {
     DisplayName: "test",
     Email: "test",
   });
+  const [showUserForm, setShowUserForm] = useState(false); // State to control rendering of UserForm
+  const [showExpenseForm, setShowExpenseForm] = useState(false); // State to control rendering of ExpenseForm
+
   const googleId = useSelector((state: RootState) => state.auth.user?.sub);
 
   useEffect(() => {
@@ -50,12 +54,32 @@ function GetStarted() {
     }
   }, [googleId]);
 
+  const handleGroupCreated = () => {
+    // Set the state to show the next form(s)
+    console.log("group created")
+    setShowUserForm(true);
+  };
+
   return (
     <div className="container-fluid">
-      <GroupForm setGroupId={setGroupId} />
-
-      <UserForm groupId={groupId} />
-      <ExpenseForm groupId={groupId} userId={currentUser.UserId} />
+      <div style={{ display: "flex" }}>
+        <div style={{ flex: "0 0 33%", marginRight: "20px" }}>
+          <MyGroups />
+        </div>
+        <div style={{ flex: 1 }}>
+          {!groupId && <GroupForm setGroupId={setGroupId} onNext={handleGroupCreated} />}
+          {groupId && (
+            <div className="forms-container">
+              <div className="form">
+                <UserForm groupId={groupId} />
+              </div>
+              <div className="form">
+                <ExpenseForm groupId={groupId} userId={currentUser.UserId} />
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

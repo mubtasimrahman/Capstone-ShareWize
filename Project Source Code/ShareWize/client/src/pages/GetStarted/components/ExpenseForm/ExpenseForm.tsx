@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
 import "./ExpenseForm.css";
 
@@ -7,9 +7,37 @@ interface ExpenseFormProps {
   userId: number;
 }
 
+interface Expense {
+    ExpenseId: string;
+    Description: string,
+    Amount: number,
+    UserName: string,
+    GroupId: number | null
+    DatePaid: string;
+}
+
 function ExpenseForm({ groupId, userId }: ExpenseFormProps) {
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+
+  useEffect(() => {
+    if (groupId) {
+      fetchExpenses(groupId);
+    }
+  }, [groupId]);
+
+  const fetchExpenses = (groupId: number) => {
+    axios
+      .get(`http://localhost:8000/groups/${groupId}/expenses`)
+      .then((response) => {
+        setExpenses(response.data);
+        console.log(response.data)
+      })
+      .catch((error) => {
+        console.error("Error fetching expenses:", error);
+      });
+  };
 
   const addExpense = (
     description: string,
@@ -23,7 +51,7 @@ function ExpenseForm({ groupId, userId }: ExpenseFormProps) {
         {
           description,
           amount,
-          userId, // Assuming datePaid is not required here
+          userId,
         },
         {
           headers: {
@@ -33,7 +61,9 @@ function ExpenseForm({ groupId, userId }: ExpenseFormProps) {
       )
       .then((response) => {
         console.log(response); // Assuming you want to do something after adding the expense
-        console.log("succcesfully added expense");
+        console.log("successfully added expense");
+        // After adding the expense, fetch expenses again to update the list
+        fetchExpenses(groupId || 0);
       })
       .catch((error) => {
         console.error("Error adding expense:", error);
@@ -69,6 +99,17 @@ function ExpenseForm({ groupId, userId }: ExpenseFormProps) {
           {" "}
           Add Expense
         </button>
+      </div>
+
+      <div className="section">
+        <h2>Expenses</h2>
+        <ul>
+          {expenses.map((expense) => (
+            <li key={expense.ExpenseId}>
+              {expense.Description} - ${expense.Amount} - {expense.UserName}
+            </li>
+          ))}
+        </ul>
       </div>
     </div>
   );

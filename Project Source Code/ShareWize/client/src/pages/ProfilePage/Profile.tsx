@@ -1,12 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { AppDispatch, RootState } from "../../App/store/store";
-import { useDispatch, useSelector } from "react-redux";
-import { loginSuccess } from "../../App/store/actions/authActions";
+import { RootState } from "../../App/store/store";
+import { useSelector } from "react-redux";
 import axios from "axios";
-
-interface UserProfileProps {
-  googleId: string;
-}
+import LogoutButton from "../../components/Logout/Logout";
 
 interface userObject {
   UserId: number;
@@ -15,50 +11,19 @@ interface userObject {
   Email: string;
 }
 
-//const dispatch = useDispatch();
-
-// function UserProfile({ googleId } : UserProfileProps) {
-//     const dispatch = useDispatch();
-
-//     useEffect(() => {
-//         const fetchUser = async () => {
-//         try {
-//             const response = await axios.get(`http://localhost:8000/getUser/${googleId}`);
-//             const user = response.data;
-
-//             // Dispatch action to update Redux store with user information
-//             console.log(user);
-//             // dispatch(loginSuccess(user)); // Use your action creator here
-//         } catch (error) {
-//             console.error("Error fetching user:", error);
-//         }
-//         };
-
-//         fetchUser();
-//     }, [dispatch, googleId]);
-// }
-
 export default function Profile() {
   const googleId = useSelector((state: RootState) => state.auth.user?.sub);
   const image = useSelector((state: RootState) => state.auth.user?.picture);
   const [currentUser, setCurrentUser] = useState<userObject>();
-  const dispatch = useDispatch();
 
   useEffect(() => {
     if (googleId) {
-      // Move the logic directly into this useEffect
       const fetchUser = async () => {
         try {
           const response = await axios.get<userObject>(
             `http://localhost:8000/getUser/${googleId}`
           );
           setCurrentUser(response.data);
-          console.log(
-            "Current user wont be logged here as useEffect is async:",
-            currentUser
-          );
-          // Dispatch action to update Redux store with user information
-          //dispatch(loginSuccess(user)); // Use your action creator here
         } catch (error) {
           console.error("Error fetching user:", error);
         }
@@ -70,18 +35,37 @@ export default function Profile() {
     }
   }, [googleId]);
 
-  return (
-    <div className="container-fluid" style={{ color: "white" }}>
-      Profile
-      <div style={{ color: "white" }}>
-        <div>
-          <img src={image} />
 
-          <div>{currentUser?.DisplayName}</div>
-          <div>{currentUser?.Email}</div>
-          <div>{currentUser?.GoogleId}</div>
-          <div>{currentUser?.UserId}</div>
-        </div>
+  return (
+    <div className="container-fluid" style={{ color: "white", textAlign: "center" }}>
+      <h1>Profile</h1>
+      <div style={{ color: "white", display: "inline-block" }}>
+        <table style={{ margin: "auto" }}>
+          <tbody>
+            <tr>
+              <td style={{ textAlign: "center" }}><img src={image} alt="Profile" style={{ width: "100px", borderRadius: "50%" }} /></td>
+            </tr>
+            <tr>
+              <td><strong>Name:</strong></td>
+              <td>{currentUser?.DisplayName}</td>
+            </tr>
+            <tr>
+              <td><strong>Email:</strong></td>
+              <td>{currentUser?.Email}</td>
+            </tr>
+            <tr>
+              <td><strong>Google ID:</strong></td>
+              <td>{currentUser?.GoogleId}</td>
+            </tr>
+            <tr>
+              <td><strong>User ID:</strong></td>
+              <td>{currentUser?.UserId}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div style={{ marginTop: "20px" }}>
+        <LogoutButton/>
       </div>
     </div>
   );

@@ -4,10 +4,12 @@ import "./GroupForm.css";
 
 interface GroupFormProps {
   setGroupId: React.Dispatch<React.SetStateAction<number | null>>;
+  onNext: () => void; // Callback function to switch to the next form
 }
 
-function GroupForm({ setGroupId }: GroupFormProps) {
+function GroupForm({ setGroupId, onNext }: GroupFormProps) {
   const [groupName, setGroupName] = useState("");
+  const [groupCreated, setGroupCreated] = useState(false); // Track if the group is created
 
   const handleCreateGroup = () => {
     axios
@@ -28,6 +30,8 @@ function GroupForm({ setGroupId }: GroupFormProps) {
         if (response.data) {
           const groupId = response.data.groupID; // Assuming the server directly returns the groupId
           setGroupId(groupId); // Update the local state with the groupId
+          setGroupCreated(true); // Set groupCreated to true
+          onNext();
           console.log(groupId);
         }
 
@@ -37,6 +41,10 @@ function GroupForm({ setGroupId }: GroupFormProps) {
         console.error("Error creating group:", error);
       });
   };
+
+  if (groupCreated) {
+    return null; // If the group is created, hide the GroupForm component
+  }
 
   return (
     <div className="container">

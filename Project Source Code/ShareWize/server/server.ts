@@ -86,7 +86,6 @@ app.get("/getUser/:googleId", cors(), async (req: Request, res: Response) => {
     res.status(500).send("Internal Server Error");
   }
 });
-
 app.post(
   "/createGroup",
   cors(),
@@ -100,31 +99,48 @@ app.post(
     }
 
     try {
-      // Insert the group into the database
-      await insertGroupIntoDatabase(groupName);
+      const existingGroupID = await getGroupID(groupName);
+      console.log(existingGroupID);
 
-      // Get the group ID after successfully inserting the group
-      const groupID = await getGroupID(groupName);
+      if (existingGroupID !== null) {
+        // If the group already exists, return a conflict response
+        return res.status(409).send({ message: "Group already exists", groupName });
+      }
 
-      // Check if the group exists (groupID is not null)
-      if (groupID !== null) {
+      // Start a transaction to ensure atomicity
+      const pool = await sql.connect(config);
+      const transaction = new sql.Transaction(pool);
+      await transaction.begin();
+
+      try {
+        // Insert the group into the database
+        const request = new sql.Request(transaction);
+        await request.input("groupName", sql.NVarChar, groupName)
+                     .query("INSERT INTO Groups (GroupName) VALUES (@groupName)");
+
+        // Commit the transaction
+        await transaction.commit();
+
+        // Get the group ID after successfully inserting the group
+        const groupID = await getGroupID(groupName);
+
         // Respond with success and send groupID
-        res
-          .status(201)
-          .send({ message: "Group created successfully", groupID });
-      } else {
-        // Return a response indicating the group does not exist
-        res.status(409).send({ message: "Group already exists", groupName });
+        res.status(201).send({ message: "Group created successfully", groupID });
+      } catch (insertError) {
+        // Rollback the transaction if an error occurs during insertion
+        await transaction.rollback();
+        throw insertError;
+      } finally {
+        // Release the connection
+        await pool.close();
       }
     } catch (error) {
       console.error("Error creating group:", error);
       res.status(500).send("Internal Server Error");
-    } finally {
-      // Additional cleanup or finalization logic here
-      // You can access groupID here if needed
     }
   }
 );
+
 
 // Handling logging in
 app.post("/api", cors(), express.json(), (req: Request, res: Response) => {
@@ -182,43 +198,46 @@ const verifyAndDecodeToken = async (token: string): Promise<TokenPayload> => {
     });
 };
 
+//for first time logging in
 const insertUserIntoDatabase = async (
   userObject: TokenPayload
 ): Promise<void> => {
-  let pool: sql.ConnectionPool;
+  let pool: sql.ConnectionPool | undefined = undefined;
 
-  // Connect to the database and insert the user
-  return sql
-    .connect(config)
-    .then((p) => {
-      pool = p;
+  try {
+    // Connect to the database
+    pool = await sql.connect(config);
 
-      // Insert a user into the Users table
-      return pool.query(`
-        INSERT INTO Users (GoogleId, DisplayName, Email)
-        VALUES ('${userObject.sub}', '${userObject.name}', '${userObject.email}')
-      `);
-    })
-    .then((result) => {
-      // Handle the result of the query if needed
-      console.log("Query result:", result);
+    // Check if the user already exists in the Users table
+    const existingUser = await pool.query(`
+      SELECT TOP 1 * FROM Users WHERE Email = '${userObject.email}'
+    `);
 
-      // You might want to perform additional logic based on the result
+    // If the user already exists, do not insert again
+    if (existingUser.rowsAffected && existingUser.rowsAffected[0] > 0) {
+      console.log(`User with email ${userObject.email} already exists in the database`);
+      return;
+    }
 
-      // Return void since this function is supposed to return Promise<void>
-      return Promise.resolve();
-    })
-    .catch((error) => {
-      console.error("Error connecting to SQL Server or inserting data:", error);
-      throw error;
-    })
-    .finally(() => {
-      // Close the SQL Server connection
-      if (pool) {
-        pool.close();
-      }
-    });
+    // Insert the user into the Users table
+    const result = await pool.query(`
+      INSERT INTO Users (GoogleId, DisplayName, Email)
+      VALUES ('${userObject.sub}', '${userObject.name}', '${userObject.email}')
+    `);
+
+    console.log("User inserted successfully:", result);
+
+  } catch (error) {
+    console.error("Error connecting to SQL Server or inserting data:", error);
+    throw error;
+  } finally {
+    // Close the SQL Server connection
+    if (pool) {
+      pool.close();
+    }
+  }
 };
+
 
 const insertGroupIntoDatabase = async (groupName: string): Promise<number> => {
   let pool: sql.ConnectionPool;
@@ -303,6 +322,7 @@ async function getGroupID(groupName: string) {
     throw error;
   }
 }
+
 
 const insertExpenseIntoDatabase = async (
   description: string,
@@ -449,6 +469,212 @@ const insertUserIntoGroupByEmail = async (
       }
     });
 };
+
+
+// Endpoint to get all groups for a user
+app.get("/myGroups", cors(), async (req: Request, res: Response) => {
+  const googleId = req.query.googleId as string; // Assuming googleId is provided as a query parameter
+
+  if (!googleId) {
+    return res.status(400).send("Google ID is missing");
+  }
+
+  try {
+    const userGroups = await getUserGroupsByGoogleId(googleId);
+
+    // Respond with the list of groups
+    res.json(userGroups);
+  } catch (error) {
+    console.error("Error fetching user groups:", error);
+    res.status(500).send("Internal Server Error");
+  }
+});
+
+// Function to get all groups for a user by Google ID
+const getUserGroupsByGoogleId = async (googleId: string): Promise<any[]> => {
+  let pool: sql.ConnectionPool | undefined; // Initialize pool to undefined
+
+  try {
+    // Connect to the database
+    pool = await sql.connect(config);
+
+    // Query to get all groups for the user by Google ID
+    const result = await pool
+      .request()
+      .input("googleId", sql.NVarChar, googleId)
+      .query(`
+        SELECT g.GroupId, g.GroupName
+        FROM Groups g
+        INNER JOIN Users u ON u.GoogleId = @googleId
+        INNER JOIN GroupMembershipsExample gm ON u.UserId = gm.UserId AND g.GroupId = gm.GroupId
+      `);
+
+    // Return the list of groups
+    return result.recordset;
+  } catch (error) {
+    console.error("Error fetching user groups from the database:", error);
+    throw error;
+  } finally {
+    // Close the SQL Server connection
+    if (pool) {
+      await pool.close();
+    }
+  }
+};
+
+// Endpoint to get all users in a specific group by group ID
+app.get("/groups/:groupId/users", cors(), async (req: Request, res: Response) => {
+  const groupId = req.params.groupId; // Extract groupId from params
+
+  if (!groupId) {
+    return res.status(400).send("Group ID is missing");
+  }
+
+  try {
+    const groupUsers = await getUsersInGroupById(groupId);
+
+    // Respond with the list of users in the group
+    res.json(groupUsers);
+  } catch (error) {
+    console.error("Error fetching users in group:", error);
+    res.status(500).send("Internal Server Error");
+  }
+});
+
+// Function to get all users in a specific group by group ID
+const getUsersInGroupById = async (groupId: string): Promise<any[]> => {
+  let pool: sql.ConnectionPool | undefined;
+
+  try {
+    // Connect to the database
+    pool = await sql.connect(config);
+
+    // Query to get all users in the specified group by group ID
+    const result = await pool
+      .request()
+      .input("groupId", sql.Int, groupId) // Use groupId parameter
+      .query(`
+        SELECT u.*
+        FROM Users u
+        INNER JOIN GroupMembershipsExample gm ON u.UserId = gm.UserId
+        WHERE gm.GroupId = @groupId
+      `);
+
+    // Return the list of users in the group
+    return result.recordset;
+  } catch (error) {
+    console.error("Error fetching users in group from the database:", error);
+    throw error;
+  } finally {
+    // Close the SQL Server connection
+    if (pool) {
+      await pool.close();
+    }
+  }
+};
+
+// Endpoint to get all expenses for a specific group by group ID
+app.get("/groups/:groupId/expenses", cors(), async (req: Request, res: Response) => {
+  const groupId = req.params.groupId;
+
+  if (!groupId) {
+    return res.status(400).send("Group ID is missing");
+  }
+
+  try {
+    const groupExpenses = await getExpensesByGroupId(groupId);
+
+    // Respond with the list of expenses in the group
+    res.json(groupExpenses);
+  } catch (error) {
+    console.error("Error fetching expenses in group:", error);
+    res.status(500).send("Internal Server Error");
+  }
+});
+
+// Function to get all expenses in a specific group by group ID
+// Function to get all expenses in a specific group by group ID
+const getExpensesByGroupId = async (groupId: string): Promise<any[]> => {
+  let pool: sql.ConnectionPool | undefined;
+
+  try {
+    // Connect to the database
+    pool = await sql.connect(config);
+
+    // Query to get all expenses in the specified group by group ID
+    const result = await pool
+      .request()
+      .input("groupId", sql.Int, groupId) // Use groupId parameter
+      .query(`
+        SELECT e.*, u.DisplayName AS UserName
+        FROM Expenses e
+        INNER JOIN Users u ON e.UserId = u.UserId
+        WHERE e.GroupId = @groupId
+      `);
+
+    // Return the list of expenses in the group with user names
+    return result.recordset;
+  } catch (error) {
+    console.error("Error fetching expenses in group from the database:", error);
+    throw error;
+  } finally {
+    // Close the SQL Server connection
+    if (pool) {
+      await pool.close();
+    }
+  }
+};
+
+// Endpoint to get all expenses for a specific user by user ID
+app.get("/users/:userId/expenses", cors(), async (req: Request, res: Response) => {
+  const userId = parseInt(req.params.userId);
+
+  if (isNaN(userId)) {
+    return res.status(400).send("User ID is missing or invalid");
+  }
+
+  try {
+    const userExpenses = await getExpensesByUserId(userId);
+
+    // Respond with the list of expenses for the user
+    res.json(userExpenses);
+  } catch (error) {
+    console.error("Error fetching expenses for user:", error);
+    res.status(500).send("Internal Server Error");
+  }
+});
+
+// Function to get all expenses for a specific user by user ID
+const getExpensesByUserId = async (userId: number): Promise<any[]> => {
+  let pool: sql.ConnectionPool | undefined;
+
+  try {
+    // Connect to the database
+    pool = await sql.connect(config);
+
+    // Query to get all expenses for the specified user by user ID
+    const result = await pool
+      .request()
+      .input("userId", sql.Int, userId)
+      .query(`
+        SELECT *
+        FROM Expenses
+        WHERE UserId = @userId
+      `);
+
+    // Return the list of expenses for the user
+    return result.recordset;
+  } catch (error) {
+    console.error("Error fetching expenses for user from the database:", error);
+    throw error;
+  } finally {
+    // Close the SQL Server connection
+    if (pool) {
+      await pool.close();
+    }
+  }
+};
+
 
 app.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);

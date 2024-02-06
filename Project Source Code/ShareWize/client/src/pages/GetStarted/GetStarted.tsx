@@ -1,4 +1,6 @@
-import React, { useEffect, useState } from "react";
+// GetStarted.tsx
+
+import React, { useState, useEffect } from "react";
 import GroupForm from "./components/GroupForm/GroupForm";
 import UserForm from "./components/UserForm/UserForm";
 import ExpenseForm from "./components/ExpenseForm/ExpenseForm";
@@ -15,16 +17,24 @@ interface userObject {
   Email: string;
 }
 
+interface Group {
+  GroupId: number;
+  GroupName: string;
+}
+
 function GetStarted() {
   const [groupId, setGroupId] = useState<number | null>(null);
+  const [currentGroup, setCurrentGroup] = useState<Group | null>(null);
   const [currentUser, setCurrentUser] = useState<userObject>({
     UserId: 1,
     GoogleId: "placeholder",
     DisplayName: "test",
     Email: "test",
   });
+
   const [showUserForm, setShowUserForm] = useState(false); // State to control rendering of UserForm
   const [showExpenseForm, setShowExpenseForm] = useState(false); // State to control rendering of ExpenseForm
+  const [showGroupForm, setShowGroupForm] = useState(false); // State to control rendering of GroupForm
 
   const googleId = useSelector((state: RootState) => state.auth.user?.sub);
 
@@ -60,14 +70,37 @@ function GetStarted() {
     setShowUserForm(true);
   };
 
+  const handleCreateGroupClick = () => {
+    setShowGroupForm(true);
+  };
+
+  const handleGroupClick = (group: Group) => {
+    // Set the currentGroup state when a group is clicked
+    setCurrentGroup(group);
+    setShowGroupForm(false); // Hide the create group button when a group is clicked
+  };
+
   return (
     <div className="container-fluid">
       <div style={{ display: "flex" }}>
         <div style={{ flex: "0 0 33%", marginRight: "20px" }}>
-          <MyGroups />
+          <MyGroups onGroupClick={handleGroupClick} />
         </div>
-        <div style={{ flex: 1 }}>
-          {!groupId && <GroupForm setGroupId={setGroupId} onNext={handleGroupCreated} />}
+        <div style={{ flex: 1, display: "flex", justifyContent: "center", alignItems: "center", color: "green" }}>
+          {currentGroup ? (
+            <h2>{currentGroup.GroupName}</h2> // Display group name as title
+          ) : (
+            !groupId && !showGroupForm && (
+              <button onClick={handleCreateGroupClick}>Create Group</button>
+            )
+          )}
+          {showGroupForm && (
+            <GroupForm
+              userId={currentUser.UserId}
+              setGroupId={setGroupId}
+              onNext={handleGroupCreated}
+            />
+          )}
           {groupId && (
             <div className="forms-container">
               <div className="form">

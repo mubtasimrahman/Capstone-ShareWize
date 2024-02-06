@@ -5,9 +5,10 @@ import "./GroupForm.css";
 interface GroupFormProps {
   setGroupId: React.Dispatch<React.SetStateAction<number | null>>;
   onNext: () => void; // Callback function to switch to the next form
+  userId: number; // Add userId prop
 }
 
-function GroupForm({ setGroupId, onNext }: GroupFormProps) {
+function GroupForm({ setGroupId, onNext, userId }: GroupFormProps) {
   const [groupName, setGroupName] = useState("");
   const [groupCreated, setGroupCreated] = useState(false); // Track if the group is created
 
@@ -17,6 +18,7 @@ function GroupForm({ setGroupId, onNext }: GroupFormProps) {
         "http://localhost:8000/createGroup",
         {
           groupName: groupName,
+          userId: userId, // Pass userId to the server
         },
         {
           headers: {

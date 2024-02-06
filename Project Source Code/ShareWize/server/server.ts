@@ -86,6 +86,8 @@ app.get("/getUser/:googleId", cors(), async (req: Request, res: Response) => {
     res.status(500).send("Internal Server Error");
   }
 });
+
+
 app.post(
   "/createGroup",
   cors(),
@@ -140,6 +142,67 @@ app.post(
     }
   }
 );
+
+
+// app.post(
+//   "/createGroup",
+//   cors(),
+//   express.json(),
+//   async (req: Request, res: Response) => {
+//     const { groupName, userId } = req.body; // Modified to accept userId instead of googleId
+
+//     // Check if required parameters are present
+//     if (!groupName || !userId) {
+//       return res.status(400).send("Group name and user ID are required");
+//     }
+
+//     try {
+//       const existingGroupID = await getGroupID(groupName);
+
+//       if (existingGroupID !== null) {
+//         // If the group already exists, return a conflict response
+//         return res.status(409).send({ message: "Group already exists", groupName });
+//       }
+
+//       // Start a transaction to ensure atomicity
+//       const pool = await sql.connect(config);
+//       const transaction = new sql.Transaction(pool);
+//       await transaction.begin();
+
+//       try {
+//         // Insert the group into the database
+//         const request = new sql.Request(transaction);
+//         await request.input("groupName", sql.NVarChar, groupName)
+//                      .query("INSERT INTO Groups (GroupName) VALUES (@groupName)");
+
+//         // Get the group ID after successfully inserting the group
+//         const groupID = await getGroupID(groupName);
+
+//         // Insert the user into the group as a member
+//         await request.input("userId", sql.Int, userId)
+//                      .input("groupId", sql.Int, groupID)
+//                      .query("INSERT INTO GroupMembershipsExample (UserId, GroupId) VALUES (@userId, @groupId)");
+
+//         // Commit the transaction
+//         await transaction.commit();
+
+//         // Respond with success and send groupID
+//         res.status(201).send({ message: "Group created successfully", groupID });
+//       } catch (insertError) {
+//         // Rollback the transaction if an error occurs during insertion
+//         await transaction.rollback();
+//         throw insertError;
+//       } finally {
+//         // Release the connection
+//         await pool.close();
+//       }
+//     } catch (error) {
+//       console.error("Error creating group:", error);
+//       res.status(500).send("Internal Server Error");
+//     }
+//   }
+// );
+
 
 
 // Handling logging in

@@ -1,3 +1,5 @@
+// MyGroups.tsx
+
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import "./MyGroups.css";
@@ -10,7 +12,11 @@ interface Group {
   GroupName: string;
 }
 
-function MyGroups() {
+interface MyGroupsProps {
+  onGroupClick: (group: Group) => void; // Callback function to handle group click
+}
+
+function MyGroups({ onGroupClick }: MyGroupsProps) {
   const userId = useSelector((state: RootState) => state.auth.user?.sub);
   const [groups, setGroups] = useState<Group[]>([]); // Provide type information for the groups state variable
   const [groupsFound, setGroupsFound] = useState(false); // Track if the group is created
@@ -44,6 +50,11 @@ function MyGroups() {
     }
   }, [userId]); // Fetch groups data when userId changes
 
+  const handleGroupClick = (group: Group) => {
+    // Call the callback function with the selected group
+    onGroupClick(group);
+  };
+
   return (
     <div className="container">
       <div className="section">
@@ -51,7 +62,11 @@ function MyGroups() {
         {groupsFound ? (
           <ul>
             {groups.map((group) => (
-              <li key={group.GroupId}>{group.GroupName}</li>
+              <li key={group.GroupId}>
+                <a href="#" onClick={() => handleGroupClick(group)}>
+                  {group.GroupName}
+                </a>
+              </li>
             ))}
           </ul>
         ) : (

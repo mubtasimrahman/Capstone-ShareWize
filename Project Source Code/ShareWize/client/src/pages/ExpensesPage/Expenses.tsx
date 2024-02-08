@@ -46,7 +46,7 @@ export default function Expenses() {
   const handleFetchExpenses = async () => {
     if (currentUser) {
       try {
-        const response = await axios.get<Expense[]>(`/users/${currentUser.UserId}/expenses`);
+        const response = await axios.get<Expense[]>(`http://localhost:8000/users/${currentUser.UserId}/expenses`);
         setExpenses(response.data);
       } catch (error) {
         console.error('Error fetching expenses:', error);
@@ -61,7 +61,7 @@ export default function Expenses() {
       <ul>
         {expenses.map((expense) => (
           <li key={expense.ExpenseId}>
-            Description: {expense.Description}, Amount: {expense.Amount}, User: {expense.UserName}
+            Description: {expense.Description}, Amount: {expense.Amount}
           </li>
         ))}
       </ul>

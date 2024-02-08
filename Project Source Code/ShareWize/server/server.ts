@@ -301,6 +301,31 @@ const insertUserIntoDatabase = async (
   }
 };
 
+// Updated server-side code with new endpoint to add a user to a group
+app.post("/addUserToGroup", cors(), express.json(), (req: Request, res: Response) => {
+  const { groupId, userId } = req.body;
+
+  console.log("Received request at /addUserToGroup");
+
+  if (!groupId || !userId) {
+    return res.status(400).send("Group ID and user ID are required");
+  }
+
+  insertUserIntoGroup(groupId, userId)
+    .then(() => {
+      // Additional logic or response if needed
+      res.status(201).send("User added to group successfully");
+    })
+    .catch((error) => {
+      console.error("Error adding user to group:", error);
+      res.status(500).send("Internal Server Error");
+    })
+    .finally(() => {
+      // Additional cleanup or finalization logic here
+    });
+});
+
+
 
 const insertGroupIntoDatabase = async (groupName: string): Promise<number> => {
   let pool: sql.ConnectionPool;
@@ -737,6 +762,29 @@ const getExpensesByUserId = async (userId: number): Promise<any[]> => {
     }
   }
 };
+
+const insertUserIntoGroup = async (groupId: number, userId: number) => {
+  try {
+    const pool = await sql.connect(config);
+
+    const result = await pool
+      .request()
+      .input("userId", sql.Int, userId)
+      .input("groupId", sql.Int, groupId)
+      .query(`
+        INSERT INTO GroupMembershipsExample (UserId, GroupId)
+        VALUES (@userId, @groupId)
+      `);
+
+    if (result.rowsAffected[0] === 0) {
+      throw new Error("User not added to group");
+    }
+  } catch (error) {
+    console.error("Error inserting user into group:", error);
+    throw error;
+  }
+};
+
 
 
 app.listen(port, () => {

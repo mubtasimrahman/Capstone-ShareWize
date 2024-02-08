@@ -12,37 +12,58 @@ function GroupForm({ setGroupId, onNext, userId }: GroupFormProps) {
   const [groupName, setGroupName] = useState("");
   const [groupCreated, setGroupCreated] = useState(false); // Track if the group is created
 
-  const handleCreateGroup = () => {
-    axios
-      .post(
+  const handleCreateGroup = async () => {
+    try {
+      const response = await axios.post(
         "http://localhost:8000/createGroup",
         {
           groupName: groupName,
-          userId: userId, // Pass userId to the server
+          userId: userId,
         },
         {
           headers: {
             "Content-Type": "application/json",
           },
         }
-      )
-      .then((response) => {
-        console.log("Group creation response:", response);
-
-        if (response.data) {
-          const groupId = response.data.groupID; // Assuming the server directly returns the groupId
-          setGroupId(groupId); // Update the local state with the groupId
-          setGroupCreated(true); // Set groupCreated to true
-          onNext();
-          console.log(groupId);
-        }
-
-        // Handle the success response here
-      })
-      .catch((error) => {
-        console.error("Error creating group:", error);
-      });
+      );
+  
+      console.log("Group creation response:", response);
+  
+      if (response.data) {
+        const groupId = response.data.groupID;
+        setGroupId(groupId);
+        setGroupCreated(true);
+        onNext();
+        console.log(groupId);
+  
+        axios
+          .post(
+            `http://localhost:8000/addUserToGroup`,
+            {
+              groupId: groupId,
+              userId: userId,
+            },
+            {
+              headers: {
+                "Content-Type": "application/json",
+              },
+            }
+          )
+          .then((addUserResponse) => {
+            console.log("User added to group response:", addUserResponse.data);
+          })
+          .catch((addUserError) => {
+            console.error("Error adding user to group:", addUserError);
+          })
+          .finally(() => {
+            // Any cleanup or additional logic after success or failure
+          });
+      }
+    } catch (error) {
+      console.error("Error creating group:", error);
+    }
   };
+  
 
   if (groupCreated) {
     return null; // If the group is created, hide the GroupForm component

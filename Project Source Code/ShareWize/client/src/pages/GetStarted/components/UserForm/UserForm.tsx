@@ -4,6 +4,7 @@ import "./UserForm.css";
 
 interface UserFormProps {
   groupId: number | null;
+  userId: number | null;
 }
 
 interface User {
@@ -11,7 +12,7 @@ interface User {
   Email: string;
 }
 
-function UserForm({ groupId }: UserFormProps) {
+function UserForm({ groupId, userId }: UserFormProps) {
   const [userEmail, setUserEmail] = useState("");
   const [userAdded, setUserAdded] = useState(false); // State to track whether user is added
   const [groupUsers, setGroupUsers] = useState<User[]>([]); // State to store group users
@@ -34,11 +35,39 @@ function UserForm({ groupId }: UserFormProps) {
     }
   }, [groupId]);
 
-  const addUserToGroup = () => {
-    axios
-      .post(
-        `http://localhost:8000/groups/${groupId}/users`,
+  // const addUserToGroup = () => {
+  //   axios
+  //     .post(
+  //       `http://localhost:8000/groups/${groupId}/users`,
+  //       {
+  //         userEmail,
+  //       },
+  //       {
+  //         headers: {
+  //           "Content-Type": "application/json",
+  //         },
+  //       }
+  //     )
+  //     .then((response) => {
+  //       console.log("User added response:", response);
+  //       setUserAdded(true); // Set userAdded state to true
+  //       fetchGroupUsers(); // Fetch updated group users after adding user
+  //     })
+  //     .catch((error) => {
+  //       console.error("Error adding user to group:", error);
+  //     })
+  //     .finally(() => {
+  //       console.log(userEmail);
+  //       // Any cleanup or additional logic after success or failure
+  //     });
+  // };
+
+  const sendGroupMembershipRequest = async () => {
+    try {
+      const response = await axios.post(
+        `http://localhost:8000/sendGroupMembershipRequest/${groupId}`,
         {
+          userId,
           userEmail,
         },
         {
@@ -46,19 +75,12 @@ function UserForm({ groupId }: UserFormProps) {
             "Content-Type": "application/json",
           },
         }
-      )
-      .then((response) => {
-        console.log("User added response:", response);
-        setUserAdded(true); // Set userAdded state to true
-        fetchGroupUsers(); // Fetch updated group users after adding user
-      })
-      .catch((error) => {
-        console.error("Error adding user to group:", error);
-      })
-      .finally(() => {
-        console.log(userEmail);
-        // Any cleanup or additional logic after success or failure
-      });
+      );
+
+      console.log("Group membership request sent:", response.data);
+    } catch (error) {
+      console.error("Error sending group membership request:", error);
+    }
   };
 
   return (
@@ -72,8 +94,11 @@ function UserForm({ groupId }: UserFormProps) {
           value={userEmail}
           onChange={(e) => setUserEmail(e.target.value)}
         />
-        <button className="next-button" onClick={addUserToGroup}>
+        {/* <button className="next-button" onClick={addUserToGroup}>
           Add User to Group
+        </button> */}
+        <button className="next-button" onClick={sendGroupMembershipRequest}>
+          Send Request
         </button>
       </div>
       {/* Display list of group users */}

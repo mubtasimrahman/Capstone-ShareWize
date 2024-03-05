@@ -1,5 +1,3 @@
-// GetStarted.tsx
-
 import React, { useState, useEffect } from "react";
 import GroupForm from "./components/GroupForm/GroupForm";
 import UserForm from "./components/UserForm/UserForm";
@@ -47,12 +45,10 @@ function GetStarted() {
             `http://localhost:8000/getUser/${googleId}`
           );
           setCurrentUser(response.data);
-          console.log(
-            "Current user wont be logged here as useEffect is async:",
-            currentUser
-          );
-          // Dispatch action to update Redux store with user information
-          //dispatch(loginSuccess(user)); // Use your action creator here
+          // console.log(
+          //   "Current user wont be logged here as useEffect is async:",
+          //   currentUser
+          // );
         } catch (error) {
           console.error("Error fetching user:", error);
         }
@@ -84,7 +80,7 @@ function GetStarted() {
     <div className="container-fluid">
       <div style={{ display: "flex" }}>
         <div style={{ flex: "0 0 33%", marginRight: "20px" }}>
-          <MyGroups onGroupClick={handleGroupClick} />
+          <MyGroups onGroupClick={handleGroupClick} userId={currentUser.UserId} />
         </div>
         <div style={{ flex: 1, display: "flex", justifyContent: "center", alignItems: "center", color: "green" }}>
           {currentGroup ? (
@@ -104,7 +100,7 @@ function GetStarted() {
           {groupId && (
             <div className="forms-container">
               <div className="form">
-                <UserForm groupId={groupId} />
+                <UserForm groupId={groupId} userId={currentUser.UserId} />
               </div>
               <div className="form">
                 <ExpenseForm groupId={groupId} userId={currentUser.UserId} />

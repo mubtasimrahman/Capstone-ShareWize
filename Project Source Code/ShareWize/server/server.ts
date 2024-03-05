@@ -732,6 +732,306 @@ app.get("/users/:userId/expenses", cors(), async (req: Request, res: Response) =
   }
 });
 
+// Server-Side Code (Express.js and SQL Server)
+
+// Endpoint to send a group membership request
+app.post(
+  "/sendGroupMembershipRequest/:groupId",
+  cors(),
+  express.json(),
+  async (req: Request, res: Response) => {
+    const { userId, userEmail } = req.body;
+    const groupId = req.params.groupId;
+
+    if (!userId || !userEmail || !groupId) {
+      return res.status(400).send("User ID, user email, and group ID are required");
+    }
+
+    try {
+      // Get the user to whom the request is being sent
+      const receiverUser = await getUserByEmail(userEmail);
+
+      if (!receiverUser) {
+        return res.status(404).send("Receiver user not found");
+      }
+
+      // Check if the sender is already a member of the group
+      const isSenderGroupMember = await isUserGroupMember(userId, groupId);
+
+      if (!isSenderGroupMember) {
+        return res.status(403).send("Sender is not a member of the group");
+      }
+
+      // Check if the receiver is already a member of the group
+      const isReceiverGroupMember = await isUserGroupMember(receiverUser.UserId, groupId);
+
+      if (isReceiverGroupMember) {
+        return res.status(409).send("Receiver is already a member of the group");
+      }
+
+      // Check if a request already exists
+      const existingRequest = await getGroupMembershipRequest(userId, receiverUser.UserId, groupId);
+
+      if (existingRequest) {
+        return res.status(409).send("Request already exists");
+      }
+
+      // Insert the new request into the database
+      await insertGroupMembershipRequest(userId, receiverUser.UserId, groupId);
+
+      res.status(201).send("Request sent successfully");
+    } catch (error) {
+      console.error("Error sending group membership request:", error);
+      res.status(500).send("Internal Server Error");
+    }
+  }
+);
+
+// Helper function to check if a user is a member of a group
+const isUserGroupMember = async (userId: number, groupId: string): Promise<boolean> => {
+  let pool: sql.ConnectionPool | undefined;
+
+
+  try {
+    pool = await sql.connect(config);
+
+    const result = await pool.query`
+      SELECT 1
+      FROM GroupMembershipsExample
+      WHERE UserId = ${userId} AND GroupId = ${groupId}
+    `;
+
+    return result.rowsAffected[0] === 1;
+  } catch (error) {
+    console.error('Error checking user group membership:', error);
+    throw error;
+  } finally {
+    if (pool) {
+      await pool.close();
+    }
+  }
+};
+
+// Helper function to get existing group membership request
+const getGroupMembershipRequest = async (
+  senderUserId: number,
+  receiverUserId: number,
+  groupId: string
+): Promise<any> => {
+  let pool: sql.ConnectionPool | undefined;
+
+
+  try {
+    pool = await sql.connect(config);
+
+    const result = await pool.query`
+      SELECT *
+      FROM GroupMembershipRequests
+      WHERE SenderUserId = ${senderUserId} AND ReceiverUserId = ${receiverUserId} AND GroupId = ${groupId}
+    `;
+
+    return result.recordset[0];
+  } catch (error) {
+    console.error('Error getting group membership request:', error);
+    throw error;
+  } finally {
+    if (pool) {
+      await pool.close();
+    }
+  }
+};
+
+// Helper function to insert group membership request
+const insertGroupMembershipRequest = async (
+  senderUserId: number,
+  receiverUserId: number,
+  groupId: string
+): Promise<void> => {
+  let pool: sql.ConnectionPool | undefined;
+
+
+  try {
+    pool = await sql.connect(config);
+
+    await pool.query`
+      INSERT INTO GroupMembershipRequests (SenderUserId, ReceiverUserId, GroupId)
+      VALUES (${senderUserId}, ${receiverUserId}, ${groupId})
+    `;
+  } catch (error) {
+    console.error('Error inserting group membership request:', error);
+    throw error;
+  } finally {
+    if (pool) {
+      await pool.close();
+    }
+  }
+};
+
+// Helper function to get user by email
+const getUserByEmail = async (email: string): Promise<any> => {
+  let pool: sql.ConnectionPool | undefined;
+
+
+  try {
+    pool = await sql.connect(config);
+
+    const result = await pool.query`
+      SELECT *
+      FROM Users
+      WHERE Email = ${email}
+    `;
+
+    return result.recordset[0];
+  } catch (error) {
+    console.error('Error getting user by email:', error);
+    throw error;
+  } finally {
+    if (pool) {
+      await pool.close();
+    }
+  }
+};
+
+
+
+app.get('/groupRequests', cors(), async (req: Request, res: Response) => {
+  const { userId } = req.query;
+
+  if (!userId) {
+    return res.status(400).send('User ID is required');
+  }
+
+  try {
+    const requests = await getGroupRequestsByUserId(Number(userId));
+    res.status(200).json(requests);
+  } catch (error) {
+    console.error('Error fetching group requests:', error);
+    res.status(500).send('Internal Server Error');
+  }
+});
+
+app.post('/respondToGroupMembershipRequest', cors(), express.json(), async (req: Request, res: Response) => {
+  const { requestId, response } = req.body;
+
+  if (!requestId || !response) {
+    return res.status(400).send('Request ID and response are required');
+  }
+
+  try {
+    // Respond to the group membership request and add the group if the response is "Accept"
+    await respondToGroupMembershipRequest(Number(requestId), response);
+    res.status(200).send('Response processed successfully');
+  } catch (error) {
+    console.error('Error responding to group membership request:', error);
+    res.status(500).send('Internal Server Error');
+  }
+});
+
+
+const respondToGroupMembershipRequest = async (requestId: number, response: string): Promise<void> => {
+  let pool: sql.ConnectionPool | undefined;
+
+  try {
+    pool = await sql.connect(config);
+
+    // Check if the request with the given ID exists and is pending
+    const checkRequestResult = await pool
+      .request()
+      .input('requestId', sql.Int, requestId)
+      .query(`
+        SELECT *
+        FROM GroupMembershipRequests
+        WHERE RequestId = @requestId AND Status = 'Pending'
+      `);
+
+    const existingRequest = checkRequestResult.recordset[0];
+
+    if (!existingRequest) {
+      throw new Error('Invalid request ID or request has already been processed');
+    }
+
+    // Update the request status based on the response
+    await pool
+      .request()
+      .input('requestId', sql.Int, requestId)
+      .input('status', sql.NVarChar(20), response)
+      .query(`
+        UPDATE GroupMembershipRequests
+        SET Status = @status
+        WHERE RequestId = @requestId
+      `);
+
+    // If the response is "Accept," add the group membership
+    if (response.toLowerCase() === 'accepted') {
+      const groupId = existingRequest.GroupId;
+      const receiverUserId = existingRequest.ReceiverUserId;
+
+      // Check if the user is not already a member of the group
+      const checkMembershipResult = await pool
+        .request()
+        .input('userId', sql.Int, receiverUserId)
+        .input('groupId', sql.Int, groupId)
+        .query(`
+          SELECT *
+          FROM GroupMembershipsExample
+          WHERE UserId = @userId AND GroupId = @groupId
+        `);
+
+      const isMember = checkMembershipResult.recordset.length > 0;
+
+      if (!isMember) {
+        // Add the user to the group
+        await pool
+          .request()
+          .input('userId', sql.Int, receiverUserId)
+          .input('groupId', sql.Int, groupId)
+          .query(`
+            INSERT INTO GroupMembershipsExample (UserId, GroupId)
+            VALUES (@userId, @groupId)
+          `);
+      }
+    }
+  } catch (error) {
+    console.error('Error responding to group membership request in the database:', error);
+    throw error;
+  } finally {
+    if (pool) {
+      pool.close();
+    }
+  }
+};
+
+
+const getGroupRequestsByUserId = async (userId: number): Promise<number[]> => {
+  let pool: sql.ConnectionPool | undefined;
+
+  try {
+
+    pool = await sql.connect(config);
+
+    const result = await pool
+      .request()
+      .input('userId', sql.Int, userId)
+      .query(`
+        SELECT r.RequestId, g.GroupId, g.GroupName
+        FROM GroupMembershipRequests r
+        INNER JOIN Groups g ON g.GroupId = r.GroupId
+        WHERE r.ReceiverUserId = @userId AND r.Status = 'Pending'
+      `);
+
+    return result.recordset;
+  } catch (error) {
+    console.error('Error fetching group requests from the database:', error);
+    throw error;
+  } finally {
+    if (pool) {
+      pool.close();
+    }
+  }
+};
+
+
+
 // Function to get all expenses for a specific user by user ID
 const getExpensesByUserId = async (userId: number): Promise<any[]> => {
   let pool: sql.ConnectionPool | undefined;

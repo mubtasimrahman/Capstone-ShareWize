@@ -27,7 +27,6 @@ function MyGroups({ onGroupClick, userId }: MyGroupsProps) {
   const [groupRequests, setGroupRequests] = useState<groupRequests[]>([]); // Modify the type based on your response structure
   const [groups, setGroups] = useState<Group[]>([]); // Provide type information for the groups state variable
 
-
   useEffect(() => {
     // Fetch group requests data when component mounts
     if (userId) {
@@ -121,8 +120,8 @@ function MyGroups({ onGroupClick, userId }: MyGroupsProps) {
     <div className="container">
       <div className="section">
         <h2>Groups</h2>
-        <h5>  Requests </h5>
-        {(groupRequests.length) ? (
+        <h5> Requests </h5>
+        {groupRequests.length ? (
           <ul>
             {groupRequests.map((request) => (
               <li key={request.RequestId}>
@@ -154,7 +153,7 @@ function MyGroups({ onGroupClick, userId }: MyGroupsProps) {
           <p>No group requests found.</p>
         )}
         <h5>My Groups</h5>
-        {(groups.length) ? (
+        {groups.length ? (
           <ul>
             {groups.map((group) => (
               <li key={group.GroupId}>

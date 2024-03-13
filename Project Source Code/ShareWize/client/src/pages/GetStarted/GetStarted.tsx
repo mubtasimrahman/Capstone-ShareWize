@@ -8,6 +8,12 @@ import { RootState } from "../../App/store/store";
 import axios from "axios";
 import "./GetStarted.css";
 
+interface Group {
+  GroupId: number;
+  GroupName: string;
+}
+
+
 interface userObject {
   UserId: number;
   GoogleId: string;
@@ -15,14 +21,9 @@ interface userObject {
   Email: string;
 }
 
-interface Group {
-  GroupId: number;
-  GroupName: string;
-}
 
 function GetStarted() {
   const [groupId, setGroupId] = useState<number | null>(null);
-  const [currentGroup, setCurrentGroup] = useState<Group | null>(null);
   const [currentUser, setCurrentUser] = useState<userObject>({
     UserId: 1,
     GoogleId: "placeholder",
@@ -31,8 +32,10 @@ function GetStarted() {
   });
 
   const [showUserForm, setShowUserForm] = useState(false); // State to control rendering of UserForm
-  const [showExpenseForm, setShowExpenseForm] = useState(false); // State to control rendering of ExpenseForm
+
   const [showGroupForm, setShowGroupForm] = useState(false); // State to control rendering of GroupForm
+  const [showForms, setShowForms] = useState(false); 
+  const [groupName, setGroupName] = useState(""); // Lifted state for groupName
 
   const googleId = useSelector((state: RootState) => state.auth.user?.sub);
 
@@ -62,7 +65,7 @@ function GetStarted() {
 
   const handleGroupCreated = () => {
     // Set the state to show the next form(s)
-    console.log("group created")
+    console.log("group created");
     setShowUserForm(true);
   };
 
@@ -71,22 +74,36 @@ function GetStarted() {
   };
 
   const handleGroupClick = (group: Group) => {
-    // Set the currentGroup state when a group is clicked
-    setCurrentGroup(group);
-    setShowGroupForm(false); // Hide the create group button when a group is clicked
+    setShowForms(true);
+    setGroupId(group.GroupId) 
+    setGroupName(group.GroupName)
+  };
+
+  const handleGroupNameChange = (name: string) => {
+    setGroupName(name); // Update groupName in the parent component
   };
 
   return (
     <div className="container-fluid">
-      <div style={{ display: "flex" }}>
+      <div style={{ display: "flex", justifyContent: "center" }}>
         <div style={{ flex: "0 0 33%", marginRight: "20px" }}>
-          <MyGroups onGroupClick={handleGroupClick} userId={currentUser.UserId} />
+          <MyGroups
+            onGroupClick={handleGroupClick}
+            userId={currentUser.UserId}
+          />
         </div>
-        <div style={{ flex: 1, display: "flex", justifyContent: "center", alignItems: "center", color: "green" }}>
-          {currentGroup ? (
-            <h2>{currentGroup.GroupName}</h2> // Display group name as title
-          ) : (
-            !groupId && !showGroupForm && (
+        <div
+          style={{
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            color: "green",
+          }}
+        >
+          { (
+            !groupId &&
+            !showGroupForm && !showForms && (
               <button onClick={handleCreateGroupClick}>Create Group</button>
             )
           )}
@@ -95,9 +112,15 @@ function GetStarted() {
               userId={currentUser.UserId}
               setGroupId={setGroupId}
               onNext={handleGroupCreated}
+              onGroupNameChange={handleGroupNameChange}
             />
           )}
-          {groupId && (
+          {(groupId||showForms) && (
+            <div className="top-centered-content">
+              Group {groupName}
+            </div>
+          )}
+          {(groupId||showForms) && (
             <div className="forms-container">
               <div className="form">
                 <UserForm groupId={groupId} userId={currentUser.UserId} />

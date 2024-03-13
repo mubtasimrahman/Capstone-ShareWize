@@ -11,10 +11,10 @@
   transform: translateX(0%);
 }
 
-.container-expense.hidden {
+/* .container-expense.hidden {
   transform: translateX(-100%);
   opacity: 0;
-}
+} */
 .section {
   background: #333;
   color: white;

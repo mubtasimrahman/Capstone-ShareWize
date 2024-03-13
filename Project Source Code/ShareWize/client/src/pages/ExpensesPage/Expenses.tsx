@@ -46,24 +46,28 @@ export default function Expenses() {
     }
   }, [googleId]);
 
+  useEffect(() => {
+    if (currentUser) {
+      handleFetchExpenses();
+    }
+  }, [currentUser]);
+
   const handleFetchExpenses = async () => {
     setLoading(true);
     setFetchAttempted(true);
-    if (currentUser) {
-      try {
-        const response = await axios.get<Expense[]>(
-          `http://localhost:8000/users/${currentUser.UserId}/expenses`
-        );
-        const formattedExpenses = response.data.map((expense) => ({
-          ...expense,
-          DatePaid: new Date(expense.DatePaid),
-        }));
-        setExpenses(formattedExpenses);
-      } catch (error) {
-        console.error("Error fetching expenses:", error);
-      } finally {
-        setLoading(false);
-      }
+    try {
+      const response = await axios.get<Expense[]>(
+        `http://localhost:8000/users/${currentUser!.UserId}/expenses`
+      );
+      const formattedExpenses = response.data.map((expense) => ({
+        ...expense,
+        DatePaid: new Date(expense.DatePaid),
+      }));
+      setExpenses(formattedExpenses);
+    } catch (error) {
+      console.error("Error fetching expenses:", error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -128,9 +132,6 @@ export default function Expenses() {
             </button>
           </div>
         </div>
-        <button className="btn btn-success mb-3" onClick={handleFetchExpenses}>
-          Fetch Expenses
-        </button>
       </div>
       <ul className="list-unstyled">
         {loading && <h3 style={{ color: "white" }}>Loading...</h3>}

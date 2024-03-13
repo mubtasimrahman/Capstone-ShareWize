@@ -35,32 +35,7 @@ function UserForm({ groupId, userId }: UserFormProps) {
     }
   }, [groupId]);
 
-  // const addUserToGroup = () => {
-  //   axios
-  //     .post(
-  //       `http://localhost:8000/groups/${groupId}/users`,
-  //       {
-  //         userEmail,
-  //       },
-  //       {
-  //         headers: {
-  //           "Content-Type": "application/json",
-  //         },
-  //       }
-  //     )
-  //     .then((response) => {
-  //       console.log("User added response:", response);
-  //       setUserAdded(true); // Set userAdded state to true
-  //       fetchGroupUsers(); // Fetch updated group users after adding user
-  //     })
-  //     .catch((error) => {
-  //       console.error("Error adding user to group:", error);
-  //     })
-  //     .finally(() => {
-  //       console.log(userEmail);
-  //       // Any cleanup or additional logic after success or failure
-  //     });
-  // };
+ 
 
   const sendGroupMembershipRequest = async () => {
     try {

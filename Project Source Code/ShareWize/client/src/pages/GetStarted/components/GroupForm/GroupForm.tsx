@@ -6,9 +6,10 @@ interface GroupFormProps {
   setGroupId: React.Dispatch<React.SetStateAction<number | null>>;
   onNext: () => void; // Callback function to switch to the next form
   userId: number; // Add userId prop
+  onGroupNameChange: (name: string) => void; // Add a callback for handling groupName change
 }
 
-function GroupForm({ setGroupId, onNext, userId }: GroupFormProps) {
+function GroupForm({ setGroupId, onNext, userId, onGroupNameChange }: GroupFormProps) {
   const [groupName, setGroupName] = useState("");
   const [groupCreated, setGroupCreated] = useState(false); // Track if the group is created
 
@@ -33,6 +34,7 @@ function GroupForm({ setGroupId, onNext, userId }: GroupFormProps) {
         const groupId = response.data.groupID;
         setGroupId(groupId);
         setGroupCreated(true);
+        onGroupNameChange(groupName); // Pass groupName back to parent
         onNext();
         console.log(groupId);
   

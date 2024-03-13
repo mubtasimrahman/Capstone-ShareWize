@@ -106,7 +106,9 @@ function ExpenseForm({ groupId, userId }: ExpenseFormProps) {
         <ul>
           {expenses.map((expense) => (
             <li key={expense.ExpenseId}>
-              {expense.Description} - ${expense.Amount} - {expense.UserName}
+              Description: {expense.Description} <br />
+              Amount: ${expense.Amount} <br />
+              Expense Maker: {expense.UserName} <br /><br />
             </li>
           ))}
         </ul>

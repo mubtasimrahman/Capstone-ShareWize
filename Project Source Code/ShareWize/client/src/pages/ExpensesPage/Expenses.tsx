@@ -19,13 +19,19 @@ interface UserObject {
   Email: string;
 }
 
+interface ExpenseSplit {
+  ExpenseId: string ;
+  Percentage: string | number;
+}
+
 export default function Expenses() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [expenseSplit, setExpenseSplit] = useState<ExpenseSplit[][]>([]);
   const googleId = useSelector((state: RootState) => state.auth.user?.sub);
   const [currentUser, setCurrentUser] = useState<UserObject | undefined>();
   const [loading, setLoading] = useState<boolean>(false);
   const [fetchAttempted, setFetchAttempted] = useState<boolean>(false);
-  const [sortBy, setSortBy] = useState<string>("Date"); // Default sorting by Date
+  const [sortBy, setSortBy] = useState<string>("Date");
 
   useEffect(() => {
     if (googleId) {
@@ -64,6 +70,18 @@ export default function Expenses() {
         DatePaid: new Date(expense.DatePaid),
       }));
       setExpenses(formattedExpenses);
+
+      // Fetch expense split for each expense
+      const expenseSplitPromises = formattedExpenses.map((expense) =>
+        axios.get<ExpenseSplit[]>(
+          `http://localhost:8000/users/${currentUser!.UserId}/expenseSplit`
+        )
+      );
+      const expenseSplitResponses = await Promise.all(expenseSplitPromises);
+      const expenseSplitData = expenseSplitResponses.map(
+        (response) => response.data
+      );
+      setExpenseSplit(expenseSplitData);
     } catch (error) {
       console.error("Error fetching expenses:", error);
     } finally {
@@ -140,7 +158,7 @@ export default function Expenses() {
         )}
         {!loading &&
           expenses.length > 0 &&
-          sortExpenses(expenses).map((expense) => (
+          sortExpenses(expenses).map((expense, index) => (
             <li key={expense.ExpenseId} className="expense-item">
               <div className="expense-details">
                 <p className="expense-description">
@@ -151,6 +169,19 @@ export default function Expenses() {
                 <p className="expense-date">
                   Date Made: {new Date(expense.DatePaid).toLocaleDateString()}
                 </p>
+                {/* Display expense split information */}
+                {expenseSplit[index]?.map((split, idx) => {
+                  if (expense.ExpenseId === split.ExpenseId) {
+                    // Calculate the amount owed based on the percentage
+                    const amountOwed = (expense.Amount * Number(split.Percentage)) / 100;
+                    return (
+                      <div key={idx}>
+                        <p className="expense-amount">Percentage: {split.Percentage}%</p>
+                        <p className="expense-amount">Amount owed: ${amountOwed.toFixed(2)}</p>
+                      </div>
+                    );
+                  }
+                })}
               </div>
             </li>
           ))}

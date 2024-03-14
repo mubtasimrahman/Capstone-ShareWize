@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import axios from "axios";
 import { useSelector } from "react-redux";
 import { RootState } from "../../App/store/store";
@@ -78,6 +78,7 @@ export default function Expenses() {
         )
       );
       const expenseSplitResponses = await Promise.all(expenseSplitPromises);
+      
       const expenseSplitData = expenseSplitResponses.map(
         (response) => response.data
       );

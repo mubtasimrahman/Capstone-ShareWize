@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import axios from "axios";
 import "./ExpenseForm.css";
 
@@ -100,6 +100,7 @@ function ExpenseForm({ groupId, userId }: ExpenseFormProps) {
       )
       .then((response) => {
         console.log("successfully added expense");
+        console.log(response)
         // After adding the expense, fetch expenses again to update the list
         fetchExpenses(groupId || 0);
       })

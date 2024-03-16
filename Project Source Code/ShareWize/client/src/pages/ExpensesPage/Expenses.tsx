@@ -20,7 +20,7 @@ interface UserObject {
 }
 
 interface ExpenseSplit {
-  ExpenseId: string ;
+  ExpenseId: string;
   Percentage: string | number;
 }
 
@@ -33,19 +33,18 @@ export default function Expenses() {
   const [fetchAttempted, setFetchAttempted] = useState<boolean>(false);
   const [sortBy, setSortBy] = useState<string>("Date");
 
+  const fetchUser = async () => {
+    try {
+      const response = await axios.get<UserObject>(
+        `http://localhost:8000/getUser/${googleId}`
+      );
+      setCurrentUser(response.data);
+    } catch (error) {
+      console.error("Error fetching user:", error);
+    }
+  };
   useEffect(() => {
     if (googleId) {
-      const fetchUser = async () => {
-        try {
-          const response = await axios.get<UserObject>(
-            `http://localhost:8000/getUser/${googleId}`
-          );
-          setCurrentUser(response.data);
-        } catch (error) {
-          console.error("Error fetching user:", error);
-        }
-      };
-
       fetchUser();
     } else {
       console.log("Error: googleId is undefined");
@@ -70,18 +69,23 @@ export default function Expenses() {
         DatePaid: new Date(expense.DatePaid),
       }));
       setExpenses(formattedExpenses);
-
-      // Fetch expense split for each expense
-      const expenseSplitPromises = formattedExpenses.map((expense) =>
-        axios.get<ExpenseSplit[]>(
-          `http://localhost:8000/users/${currentUser!.UserId}/expenseSplit`
-        )
-      );
-      const expenseSplitResponses = await Promise.all(expenseSplitPromises);
-      
-      const expenseSplitData = expenseSplitResponses.map(
-        (response) => response.data
-      );
+  
+      // Batch expense split requests
+      const batchSize = 10; // Define the batch size
+      const expenseSplitData: ExpenseSplit[][] = [];
+      for (let i = 0; i < formattedExpenses.length; i += batchSize) {
+        const batch = formattedExpenses.slice(i, i + batchSize);
+        const batchExpenseSplitPromises = batch.map((expense) =>
+          axios.get<ExpenseSplit[]>(
+            `http://localhost:8000/users/${currentUser!.UserId}/expenseSplit?expenseIds=${expense.ExpenseId}`
+          )
+        );
+        const batchExpenseSplitResponses = await Promise.all(batchExpenseSplitPromises);
+        const batchExpenseSplitData = batchExpenseSplitResponses.map(
+          (response) => response.data
+        );
+        expenseSplitData.push(...batchExpenseSplitData);
+      }
       setExpenseSplit(expenseSplitData);
     } catch (error) {
       console.error("Error fetching expenses:", error);
@@ -89,6 +93,7 @@ export default function Expenses() {
       setLoading(false);
     }
   };
+  
 
   const handleSortChange = (value: string) => {
     setSortBy(value);
@@ -174,11 +179,16 @@ export default function Expenses() {
                 {expenseSplit[index]?.map((split, idx) => {
                   if (expense.ExpenseId === split.ExpenseId) {
                     // Calculate the amount owed based on the percentage
-                    const amountOwed = (expense.Amount * Number(split.Percentage)) / 100;
+                    const amountOwed =
+                      (expense.Amount * Number(split.Percentage)) / 100;
                     return (
                       <div key={idx}>
-                        <p className="expense-amount">Percentage: {split.Percentage}%</p>
-                        <p className="expense-amount">Amount owed: ${amountOwed.toFixed(2)}</p>
+                        <p className="expense-amount">
+                          Percentage: {split.Percentage}%
+                        </p>
+                        <p className="expense-amount">
+                          Amount owed: ${amountOwed.toFixed(2)}
+                        </p>
                       </div>
                     );
                   }

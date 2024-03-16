@@ -462,11 +462,13 @@ const insertExpenseIntoDatabase = async (
 
         // Insert expense split into ExpenseSplit table
         const splitPromises = groupUsers.map(async (user) => {
-          const percentage = customPercentages[user.UserId] || 100 / groupUsers.length;
-          await pool.request().input("expenseId", sql.Int, expenseId)
+          const percentage =
+            customPercentages[user.UserId] || 100 / groupUsers.length;
+          await pool
+            .request()
+            .input("expenseId", sql.Int, expenseId)
             .input("userId", sql.Int, user.UserId)
-            .input("percentage", sql.Decimal(5, 2), percentage)
-            .query(`
+            .input("percentage", sql.Decimal(5, 2), percentage).query(`
               INSERT INTO ExpenseSplit (ExpenseId, UserId, Percentage)
               VALUES (@expenseId, @userId, @percentage)
             `);
@@ -477,7 +479,10 @@ const insertExpenseIntoDatabase = async (
 
         await transaction.commit();
       } catch (error) {
-        console.error("Error connecting to SQL Server or inserting data:", error);
+        console.error(
+          "Error connecting to SQL Server or inserting data:",
+          error
+        );
         await transaction.rollback();
         throw error;
       }
@@ -685,15 +690,32 @@ app.post(
   express.json(),
   async (req: Request, res: Response) => {
     const groupId = req.params.groupId;
-    const { description, amount, userId, groupUsers, customPercentages } = req.body;
+    const { description, amount, userId, groupUsers, customPercentages } =
+      req.body;
 
-    if (!groupId || !description || !amount || !userId || !groupUsers || !customPercentages) {
-      return res.status(400).send("One or more required parameters are missing");
+    if (
+      !groupId ||
+      !description ||
+      !amount ||
+      !userId ||
+      !groupUsers ||
+      !customPercentages
+    ) {
+      return res
+        .status(400)
+        .send("One or more required parameters are missing");
     }
 
     try {
       // Trigger insertExpenseIntoDatabase function
-      await insertExpenseIntoDatabase(description, amount, userId, parseInt(groupId), groupUsers, customPercentages);
+      await insertExpenseIntoDatabase(
+        description,
+        amount,
+        userId,
+        parseInt(groupId),
+        groupUsers,
+        customPercentages
+      );
 
       // Respond with success message
       res.status(201).send("Expense inserted into database successfully");
@@ -703,7 +725,6 @@ app.post(
     }
   }
 );
-
 
 // Function to get all expenses in a specific group by group ID
 const getExpensesByGroupId = async (groupId: string): Promise<any[]> => {
@@ -1124,15 +1145,24 @@ app.get(
   cors(),
   async (req: Request, res: Response) => {
     const userId = req.params.userId;
+    const expenseIds = req.query.expenseIds; // Retrieve expense IDs from query params
 
-    if (!userId) {
-      return res.status(400).send("User ID is missing");
+    if (!userId || !expenseIds) {
+      return res.status(400).send("User ID or Expense IDs are missing");
     }
 
     try {
-      const userExpenseSplit = await getExpenseSplitByUserId(parseInt(userId));
+      const expenseIdArray = Array.isArray(expenseIds)
+        ? expenseIds.map((id) => parseInt(id as string))
+        : [parseInt(expenseIds as string)];
 
-      // Respond with the expense split data for the user
+      // Fetch expense split data for the user and expense IDs
+      const userExpenseSplit = await getExpenseSplitByUserIdAndExpenseIds(
+        parseInt(userId),
+        expenseIdArray
+      );
+
+      // Respond with the expense split data for the user and expense IDs
       res.json(userExpenseSplit);
     } catch (error) {
       console.error("Error fetching expense split for user:", error);
@@ -1141,7 +1171,10 @@ app.get(
   }
 );
 
-const getExpenseSplitByUserId = async (userId: number): Promise<any[]> => {
+const getExpenseSplitByUserIdAndExpenseIds = async (
+  userId: number,
+  expenseIds: number[]
+): Promise<any[]> => {
   let pool: sql.ConnectionPool;
 
   // Connect to the database
@@ -1150,15 +1183,16 @@ const getExpenseSplitByUserId = async (userId: number): Promise<any[]> => {
     .then(async (p) => {
       pool = p;
 
-      // Query to retrieve expense split data for the user
+      // Query to retrieve expense split data for the user and expense IDs
       const result = await pool
         .request()
         .input("userId", sql.Int, userId)
+        .input("expenseIds", sql.NVarChar, expenseIds.join(",")) // Pass expense IDs as a comma-separated string
         .query(`
           SELECT es.ExpenseId, es.Percentage
           FROM ExpenseSplit es
           INNER JOIN Expenses e ON es.ExpenseId = e.ExpenseId
-          WHERE es.UserId = @userId
+          WHERE es.UserId = @userId AND es.ExpenseId IN (@expenseIds)
         `);
 
       return result.recordset;
@@ -1175,64 +1209,63 @@ const getExpenseSplitByUserId = async (userId: number): Promise<any[]> => {
     });
 };
 
-app.get(
-  "/users/:userId/expenses/:expenseId/expenseSplit",
-  cors(),
-  async (req: Request, res: Response) => {
-    const userId = req.params.userId;
-    const expenseId = req.params.expenseId;
+// app.get(
+//   "/users/:userId/expenses/:expenseId/expenseSplit",
+//   cors(),
+//   async (req: Request, res: Response) => {
+//     const userId = req.params.userId;
+//     const expenseId = req.params.expenseId;
 
-    if (!userId || !expenseId) {
-      return res.status(400).send("User ID or Expense ID is missing");
-    }
+//     if (!userId || !expenseId) {
+//       return res.status(400).send("User ID or Expense ID is missing");
+//     }
 
-    try {
-      const userExpenseSplit = await getExpenseSplitByUserIdAndExpenseId(parseInt(userId), parseInt(expenseId));
+//     try {
+//       const userExpenseSplit = await getExpenseSplitByUserIdAndExpenseId(parseInt(userId), parseInt(expenseId));
 
-      // Respond with the expense split data for the user and expense ID
-      res.json(userExpenseSplit);
-    } catch (error) {
-      console.error("Error fetching expense split for user and expense ID:", error);
-      res.status(500).send("Internal Server Error");
-    }
-  }
-);
+//       // Respond with the expense split data for the user and expense ID
+//       res.json(userExpenseSplit);
+//     } catch (error) {
+//       console.error("Error fetching expense split for user and expense ID:", error);
+//       res.status(500).send("Internal Server Error");
+//     }
+//   }
+// );
 
-const getExpenseSplitByUserIdAndExpenseId = async (userId: number, expenseId: number): Promise<any[]> => {
-  let pool: sql.ConnectionPool;
+// const getExpenseSplitByUserIdAndExpenseId = async (userId: number, expenseId: number): Promise<any[]> => {
+//   let pool: sql.ConnectionPool;
 
-  // Connect to the database
-  return sql
-    .connect(config)
-    .then(async (p) => {
-      pool = p;
+//   // Connect to the database
+//   return sql
+//     .connect(config)
+//     .then(async (p) => {
+//       pool = p;
 
-      // Query to retrieve expense split data for the user and expense ID
-      const result = await pool
-        .request()
-        .input("userId", sql.Int, userId)
-        .input("expenseId", sql.Int, expenseId)
-        .query(`
-          SELECT es.ExpenseId, e.Description, e.Amount, es.Percentage
-          FROM ExpenseSplit es
-          INNER JOIN Expenses e ON es.ExpenseId = e.ExpenseId
-          WHERE es.UserId = @userId AND es.ExpenseId = @expenseId
-        `);
+//       // Query to retrieve expense split data for the user and expense ID
+//       const result = await pool
+//         .request()
+//         .input("userId", sql.Int, userId)
+//         .input("expenseId", sql.Int, expenseId)
+//         .query(`
+//           SELECT es.ExpenseId, e.Description, e.Amount, es.Percentage
+//           FROM ExpenseSplit es
+//           INNER JOIN Expenses e ON es.ExpenseId = e.ExpenseId
+//           WHERE es.UserId = @userId AND es.ExpenseId = @expenseId
+//         `);
 
-      return result.recordset;
-    })
-    .catch((error) => {
-      console.error("Error connecting to SQL Server or querying data:", error);
-      throw error;
-    })
-    .finally(() => {
-      // Close the SQL Server connection
-      if (pool) {
-        pool.close();
-      }
-    });
-};
-
+//       return result.recordset;
+//     })
+//     .catch((error) => {
+//       console.error("Error connecting to SQL Server or querying data:", error);
+//       throw error;
+//     })
+//     .finally(() => {
+//       // Close the SQL Server connection
+//       if (pool) {
+//         pool.close();
+//       }
+//     });
+// };
 
 app.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);

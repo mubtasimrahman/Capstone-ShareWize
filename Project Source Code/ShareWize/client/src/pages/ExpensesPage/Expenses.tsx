@@ -56,7 +56,7 @@ export default function Expenses() {
       handleFetchExpenses();
     }
   }, [currentUser]);
-
+  console.log("Expense split:", expenseSplit);
   const handleFetchExpenses = async () => {
     setLoading(true);
     setFetchAttempted(true);
@@ -69,7 +69,7 @@ export default function Expenses() {
         DatePaid: new Date(expense.DatePaid),
       }));
       setExpenses(formattedExpenses);
-  
+
       // Batch expense split requests
       const batchSize = 12; // Define the batch size
       const expenseSplitData: ExpenseSplit[][] = [];
@@ -77,10 +77,14 @@ export default function Expenses() {
         const batch = formattedExpenses.slice(i, i + batchSize);
         const batchExpenseSplitPromises = batch.map((expense) =>
           axios.get<ExpenseSplit[]>(
-            `http://localhost:8000/users/${currentUser!.UserId}/expenseSplit?expenseIds=${expense.ExpenseId}`
+            `http://localhost:8000/users/${
+              currentUser!.UserId
+            }/expenseSplit?expenseIds=${expense.ExpenseId}`
           )
         );
-        const batchExpenseSplitResponses = await Promise.all(batchExpenseSplitPromises);
+        const batchExpenseSplitResponses = await Promise.all(
+          batchExpenseSplitPromises
+        );
         const batchExpenseSplitData = batchExpenseSplitResponses.map(
           (response) => response.data
         );
@@ -93,7 +97,6 @@ export default function Expenses() {
       setLoading(false);
     }
   };
-  
 
   const handleSortChange = (value: string) => {
     setSortBy(value);
@@ -177,21 +180,19 @@ export default function Expenses() {
                 </p>
                 {/* Display expense split information */}
                 {expenseSplit[index]?.map((split, idx) => {
-                  if (expense.ExpenseId === split.ExpenseId) {
-                    // Calculate the amount owed based on the percentage
-                    const amountOwed =
-                      (expense.Amount * Number(split.Percentage)) / 100;
-                    return (
-                      <div key={idx}>
-                        <p className="expense-amount">
-                          Percentage: {split.Percentage}%
-                        </p>
-                        <p className="expense-amount">
-                          Amount owed: ${amountOwed.toFixed(2)}
-                        </p>
-                      </div>
-                    );
-                  }
+                  // Calculate the amount owed based on the percentage
+                  const amountOwed =
+                    (expense.Amount * Number(split.Percentage)) / 100;
+                  return (
+                    <div key={idx}>
+                      <p className="expense-amount">
+                        Percentage: {split.Percentage}%
+                      </p>
+                      <p className="expense-amount">
+                        Amount owed: ${amountOwed.toFixed(2)}
+                      </p>
+                    </div>
+                  );
                 })}
               </div>
             </li>

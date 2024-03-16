@@ -71,7 +71,7 @@ export default function Expenses() {
       setExpenses(formattedExpenses);
   
       // Batch expense split requests
-      const batchSize = 10; // Define the batch size
+      const batchSize = 12; // Define the batch size
       const expenseSplitData: ExpenseSplit[][] = [];
       for (let i = 0; i < formattedExpenses.length; i += batchSize) {
         const batch = formattedExpenses.slice(i, i + batchSize);

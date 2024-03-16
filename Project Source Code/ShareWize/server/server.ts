@@ -1153,7 +1153,7 @@ app.get(
 
     try {
       const expenseIdArray = Array.isArray(expenseIds)
-        ? expenseIds.map((id) => parseInt(id as string))
+        ? (expenseIds as string[]).map((id) => parseInt(id))
         : [parseInt(expenseIds as string)];
 
       // Fetch expense split data for the user and expense IDs

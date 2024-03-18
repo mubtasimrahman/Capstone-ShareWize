@@ -1,0 +1,6 @@
+- Purpose: To review and complete the Software Requirement Specification (SRS) document for the Expense Simplification and Management Application.
+Attendees: Full Team 
+- Key Points Discussed:
+Review of SRS Document: Comprehensive walkthrough of the entire SRS document, ensuring all technical specifications, user requirements, system features, and performance criteria were accurately documented.
+Made sure we agreed with the specifications put in place.
+Made sure the team knew the responsiblities and scope of the project.

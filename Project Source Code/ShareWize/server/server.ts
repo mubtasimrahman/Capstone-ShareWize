@@ -1098,16 +1098,32 @@ const getExpensesByUserId = async (userId: number): Promise<any[]> => {
 
     // Query to get all expenses for the specified user by user ID
     const result = await pool.request().input("userId", sql.Int, userId).query(`
-        SELECT g.GroupName, g.GroupId, e.Description, e.Amount, e.DatePaid, e.ExpenseId
-        FROM Expenses e 
-        INNER JOIN Groups g ON g.GroupId = e.GroupId
-        INNER JOIN GroupMembershipsExample m ON e.GroupId = m.GroupId
-        WHERE m.UserId = @userId
+    SELECT g.GroupName, g.GroupId, e.Description, e.Amount, e.DatePaid, e.ExpenseId,
+    u.DisplayName AS ExpenseMakerDisplayName, u.Email AS ExpenseMakerEmail,
+    STRING_AGG(u2.DisplayName, ', ') AS OtherMemberDisplayNames,
+    STRING_AGG(u2.Email, ', ') AS OtherMemberEmails
+FROM Expenses e 
+INNER JOIN Groups g ON g.GroupId = e.GroupId
+INNER JOIN GroupMembershipsExample m ON e.GroupId = m.GroupId
+INNER JOIN Users u ON e.UserId = u.UserId
+INNER JOIN GroupMembershipsExample m2 ON m2.GroupId = e.GroupId AND m2.UserId != e.UserId
+INNER JOIN Users u2 ON m2.UserId = u2.UserId
+WHERE m.UserId = @userId
+GROUP BY g.GroupName, g.GroupId, e.Description, e.Amount, e.DatePaid, e.ExpenseId, u.DisplayName, u.Email
       `);
 
-    // Return the list of expenses for the user
-    console.log(result.recordset);
-    return result.recordset;
+    // Process the result to format OtherMemberDisplayNames and OtherMemberEmails as arrays
+    const formattedResult = result.recordset.map(row => {
+      return {
+        ...row,
+        OtherMemberDisplayNames: row.OtherMemberDisplayNames ? row.OtherMemberDisplayNames.split(', ') : [],
+        OtherMemberEmails: row.OtherMemberEmails ? row.OtherMemberEmails.split(', ') : []
+      };
+    });
+
+    // Return the formatted list of expenses for the user
+    console.log(formattedResult);
+    return formattedResult;
   } catch (error) {
     console.error("Error fetching expenses for user from the database:", error);
     throw error;
@@ -1118,6 +1134,7 @@ const getExpensesByUserId = async (userId: number): Promise<any[]> => {
     }
   }
 };
+
 
 const insertUserIntoGroup = async (groupId: number, userId: number) => {
   try {
@@ -1148,6 +1165,7 @@ app.get(
     const expenseIds = req.query.expenseIds; // Retrieve expense IDs from query params
 
     if (!userId || !expenseIds) {
+      console.error("User ID or Expense IDs are missing");
       return res.status(400).send("User ID or Expense IDs are missing");
     }
 
@@ -1171,10 +1189,16 @@ app.get(
   }
 );
 
+
+
+
 const getExpenseSplitByUserIdAndExpenseIds = async (
   userId: number,
   expenseIds: number[]
 ): Promise<any[]> => {
+  // Check if expenseIds is a single number, convert it to an array
+  const idsArray = Array.isArray(expenseIds) ? expenseIds : [expenseIds];
+  
   let pool: sql.ConnectionPool;
 
   // Connect to the database
@@ -1182,6 +1206,7 @@ const getExpenseSplitByUserIdAndExpenseIds = async (
     .connect(config)
     .then(async (p) => {
       pool = p;
+      pool.setMaxListeners(20); // Set the maximum number of listeners to 20
 
       // Query to retrieve expense split data for the user and expense IDs
       const result = await pool
@@ -1194,7 +1219,8 @@ const getExpenseSplitByUserIdAndExpenseIds = async (
           INNER JOIN Expenses e ON es.ExpenseId = e.ExpenseId
           WHERE es.UserId = @userId AND es.ExpenseId IN (@expenseIds)
         `);
-
+        
+      // console.log(result.recordset);
       return result.recordset;
     })
     .catch((error) => {
@@ -1266,6 +1292,85 @@ const getExpenseSplitByUserIdAndExpenseIds = async (
 //       }
 //     });
 // };
+
+
+// Handler for settling an expense
+app.post("/settleExpense", cors(), async (req: Request, res: Response) => {
+  try {
+    const { expenseId, amount, payeeEmail } = req.body;
+
+    // Validate request parameters
+    if (!expenseId || typeof amount !== "number" || !payeeEmail) {
+      return res.status(400).send("Invalid request parameters");
+    }
+
+    // Connect to the database
+    const pool = await sql.connect(config);
+
+    // Fetch the expense details
+    const expenseResult = await pool.request()
+      .input("expenseId", sql.Int, expenseId)
+      .query("SELECT Amount FROM Expenses WHERE ExpenseId = @expenseId");
+
+    if (expenseResult.recordset.length === 0) {
+      return res.status(404).send("Expense not found");
+    }
+
+    const expenseAmount = expenseResult.recordset[0].Amount;
+
+    if (amount > expenseAmount) {
+      return res.status(400).send("Settlement amount cannot exceed the expense amount");
+    }
+
+    // Start a transaction
+    const transaction = new sql.Transaction(pool);
+    await transaction.begin();
+
+    try {
+      // Update the status of the expense to 'Settled' only if the settlement amount matches the amount owed
+      if (amount === expenseAmount) {
+        const request = new sql.Request(transaction);
+        const updateQuery = `
+          UPDATE Expenses
+          SET Status = 'Settled'
+          WHERE ExpenseId = @expenseId;
+        `;
+        request.input("expenseId", sql.Int, expenseId);
+        await request.query(updateQuery);
+      }
+
+      // Insert a record into ExpenseSettlements table
+      const request = new sql.Request(transaction);
+      const insertQuery = `
+        INSERT INTO ExpenseSettlements (ExpenseId, PayerUserId, PayeeUserId, Amount, Status)
+        VALUES (@expenseId, @payerUserId, @payeeUserId, @amount, 'Pending');
+      `;
+      request.input("expenseId", sql.Int, expenseId);
+      request.input("payerUserId", sql.Int, /* payerUserId */); // Assuming you have a way to determine the payer user ID
+      request.input("payeeUserId", sql.Int, /* payeeUserId */); // Assuming you have a way to determine the payee user ID
+      request.input("amount", sql.Decimal(10, 2), amount);
+      await request.query(insertQuery);
+
+      // Commit the transaction
+      await transaction.commit();
+
+      // Send response
+      res.status(200).send("Expense settled successfully");
+    } catch (error) {
+      // Rollback transaction on error
+      await transaction.rollback();
+      console.error("Error settling expense:", error);
+      res.status(500).send("Internal Server Error");
+    } finally {
+      // Close the SQL Server connection
+      await pool.close();
+    }
+  } catch (error) {
+    console.error("Error connecting to the database:", error);
+    res.status(500).send("Internal Server Error");
+  }
+});
+
 
 app.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);

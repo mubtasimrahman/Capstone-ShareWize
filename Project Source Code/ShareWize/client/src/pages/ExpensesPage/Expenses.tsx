@@ -3,13 +3,18 @@ import axios from "axios";
 import { useSelector } from "react-redux";
 import { RootState } from "../../App/store/store";
 import "./Expenses.css";
+import { parseISO } from "date-fns";
 
 interface Expense {
+  ExpenseMakerDisplayName: string;
+  ExpenseMakerEmail: string;
   ExpenseId: string;
   Description: string;
   Amount: number;
   DatePaid: Date;
   GroupName: string;
+  OtherMemberDisplayNames: string[];
+  OtherMemberEmails: string[];
 }
 
 interface UserObject {
@@ -32,6 +37,24 @@ export default function Expenses() {
   const [loading, setLoading] = useState<boolean>(false);
   const [fetchAttempted, setFetchAttempted] = useState<boolean>(false);
   const [sortBy, setSortBy] = useState<string>("Date");
+  const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
+  const [settlementAmount, setSettlementAmount] = useState<number>(0);
+  const [email, setEmail] = useState<string>("");
+
+  const handleSettleExpense = async () => {
+    // Make API call to settle the expense
+    try {
+      const response = await axios.post("http://localhost:8000/settleExpense", {
+        expenseId: selectedExpense?.ExpenseId,
+        amount: settlementAmount,
+        payeeEmail: email,
+      });
+      // Handle success
+      console.log("Expense settled successfully:", response.data);
+    } catch (error) {
+      console.error("Error settling expense:", error);
+    }
+  };
 
   const fetchUser = async () => {
     try {
@@ -56,7 +79,7 @@ export default function Expenses() {
       handleFetchExpenses();
     }
   }, [currentUser]);
-  console.log("Expense split:", expenseSplit);
+  // console.log("Expense split:", expenseSplit);
   const handleFetchExpenses = async () => {
     setLoading(true);
     setFetchAttempted(true);
@@ -64,10 +87,13 @@ export default function Expenses() {
       const response = await axios.get<Expense[]>(
         `http://localhost:8000/users/${currentUser!.UserId}/expenses`
       );
+      console.log(response);
       const formattedExpenses = response.data.map((expense) => ({
         ...expense,
-        DatePaid: new Date(expense.DatePaid),
+        DatePaid: new Date(expense.DatePaid), // Assuming server sends UTC dates
       }));
+      console.log(formattedExpenses);
+
       setExpenses(formattedExpenses);
 
       // Batch expense split requests
@@ -117,6 +143,8 @@ export default function Expenses() {
         );
     }
   };
+  // console.log("My expenses:", expenses)
+  // console.log("original", expenses.toLocaleString)
 
   return (
     <div className="container-fluid expense-container">
@@ -173,13 +201,45 @@ export default function Expenses() {
                 <p className="expense-description">
                   Description: {expense.Description}
                 </p>
+                <ul>
+                  {/* Display Other Members */}
+                  {expense.OtherMemberDisplayNames.map((displayName, index) => {
+                    const email = expense.OtherMemberEmails[index];
+                    // Check if the current member is not the currently logged-in user
+                    if (
+                      displayName !== currentUser?.DisplayName &&
+                      email !== currentUser?.Email
+                    ) {
+                      return (
+                        <li key={index}>
+                          {displayName} - {email}
+                        </li>
+                      );
+                    }
+                    return null;
+                  })}
+
+                  {/* Display Expense Maker */}
+                  {/* Check if the Expense Maker is not the currently logged-in user */}
+                  {expense.ExpenseMakerDisplayName !==
+                    currentUser?.DisplayName &&
+                    expense.ExpenseMakerEmail !== currentUser?.Email && (
+                      <li>
+                        {expense.ExpenseMakerDisplayName} -{" "}
+                        {expense.ExpenseMakerEmail}
+                      </li>
+                    )}
+                </ul>
                 <p className="expense-amount">Amount: ${expense.Amount}</p>
                 <p className="expense-group">Group: {expense.GroupName}</p>
                 <p className="expense-date">
-                  Date Made: {new Date(expense.DatePaid).toLocaleDateString()}
+                  Date Made:{" "}
+                  {new Date(expense.DatePaid).toLocaleDateString(undefined, {
+                    timeZone: "UTC", // Adjust to your desired timezone
+                  })}
                 </p>
                 {/* Display expense split information */}
-                {expenseSplit[index]?.map((split, idx) => {
+                {expenseSplit[index].map((split, idx) => {
                   // Calculate the amount owed based on the percentage
                   const amountOwed =
                     (expense.Amount * Number(split.Percentage)) / 100;
@@ -194,10 +254,97 @@ export default function Expenses() {
                     </div>
                   );
                 })}
+                {/* Add button to settle expense */}
+                {expenseSplit[index] &&
+                  expenseSplit[index].some(
+                    (split) =>
+                      (expense.Amount * Number(split.Percentage)) / 100 > 0
+                  ) && (
+                    <button
+                      className="btn btn-primary"
+                      data-bs-toggle="modal"
+                      data-bs-target={`#exampleModal-${expense.ExpenseId}`}
+                      onClick={() => setSelectedExpense(expense)}
+                    >
+                      Settle Expense
+                    </button>
+                  )}
               </div>
             </li>
           ))}
       </ul>
+      {expenses.map((expense) => (
+        <div
+          key={expense.ExpenseId}
+          className="modal fade"
+          id={`exampleModal-${expense.ExpenseId}`}
+          tabIndex={-1}
+          aria-labelledby="exampleModalLabel"
+          aria-hidden="true"
+        >
+          <div className="modal-dialog">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title" id="exampleModalLabel">
+                  Settle Expense
+                </h5>
+                <button
+                  type="button"
+                  className="btn-close"
+                  data-bs-dismiss="modal"
+                  aria-label="Close"
+                ></button>
+              </div>
+              <div className="modal-body">
+                {/* Input fields for email and settlement amount */}
+                <div className="mb-3">
+                  <label htmlFor="inputEmail" className="form-label">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    className="form-control"
+                    id="inputEmail"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                  />
+                </div>
+                <div className="mb-3">
+                  <label htmlFor="inputAmount" className="form-label">
+                    Settlement Amount
+                  </label>
+                  <input
+                    type="number"
+                    className="form-control"
+                    id="inputAmount"
+                    value={settlementAmount}
+                    onChange={(e) =>
+                      setSettlementAmount(Number(e.target.value))
+                    }
+                  />
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  data-bs-dismiss="modal"
+                  onClick={() => setSelectedExpense(null)}
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={handleSettleExpense}
+                >
+                  Save changes
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

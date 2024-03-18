@@ -1,0 +1,13 @@
+- Purpose: Finalize the project selection focusing on an application for simplifying and tracking shared expenses.
+- Attendees: Full Team
+- Decision: Unanimously chosen project - Application for Expense Simplification and Management called ShareWize
+- Project Overview:
+Expense Simplification: Develop an application to simplify bill splitting and manage shared expenses, making the process effortless for users.
+Comprehensive Tracking: Incorporate features for tracking expenses and managing payments within friend groups. Ensure the app provides a detailed breakdown of individual contributions and expenses.
+User Empowerment: Aim to deliver a user-centric solution that enhances financial transparency among users. The app should streamline financial interactions, reduce conflicts, and promote transparency in shared financial matters.
+- Key Features Discussed:
+Intuitive interface for easy entry and management of expenses.
+Options for splitting bills in various scenarios and configurations.
+Real-time tracking of expenses and payments, with notifications for due payments.
+Secure and transparent record of all transactions and contributions.
+Personal and group expense reports with insights into spending habits.

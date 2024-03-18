@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useSelector } from "react-redux";
 import { RootState } from "../../App/store/store";
-import "./Expenses.css";
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
@@ -10,6 +9,7 @@ import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
+import "../ExpensesPage/Expenses.css";
 
 interface Expense {
   ExpenseId: string;
@@ -175,8 +175,6 @@ export default function Expenses() {
             <TableCell style={{color: "white", fontSize: "18px", fontWeight: "bold"}}>Amount</TableCell>
             <TableCell style={{color: "white", fontSize: "18px", fontWeight: "bold"}}>Group</TableCell>
             <TableCell style={{color: "white", fontSize: "18px", fontWeight: "bold"}}>Date Paid</TableCell>
-            <TableCell style={{color: "white", fontSize: "18px", fontWeight: "bold"}}>Split</TableCell>
-            <TableCell style={{color: "white", fontSize: "18px", fontWeight: "bold"}}>Amount Owed</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
@@ -198,26 +196,6 @@ export default function Expenses() {
         <TableCell>${expense.Amount}</TableCell>
         <TableCell>{expense.GroupName}</TableCell>
         <TableCell>{new Date(expense.DatePaid).toLocaleDateString()}</TableCell>
-        <TableCell>
-          {expenseSplit[index]?.map((split, idx) => {
-            return (
-              <div key={idx}>
-                <p>{split.Percentage}%</p>
-              </div>
-            );
-          })}
-        </TableCell>
-        <TableCell>
-          {expenseSplit[index]?.map((split, idx) => {
-            // Calculate the amount owed based on the percentage
-            const amountOwed = (expense.Amount * Number(split.Percentage)) / 100;
-            return (
-              <div key={idx}>
-                <p>${amountOwed.toFixed(2)}</p>
-              </div>
-            );
-          })}
-        </TableCell>
       </TableRow>
     ))}
 </TableBody>

@@ -5,6 +5,11 @@ import { select } from 'd3-selection';
 import { axisBottom, axisLeft } from 'd3-axis';
 import { RootState } from '../../App/store/store';
 import { useSelector } from 'react-redux';
+import { styled } from '@mui/material/styles';
+import { Box, Grid, Paper, Typography } from '@mui/material';
+import TransactionGrid from './TransactionGrid';
+import BarChart from './BarChart';
+import PieChart from './PieChart';
 
 interface Expense {
   ExpenseId: string;
@@ -130,17 +135,31 @@ export default function SampleLineGraph() {
   }, [data]);
 
   return (
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-      <div style={{ display: 'flex', flexDirection: 'column' }}>
-        <button className="btn btn-success" style={{ backgroundColor: 'green', color: 'white', padding: '10px', marginBottom: '10px', marginRight: '10px' }}>Date Range</button>
-        <button className="btn btn-success" style={{ backgroundColor: 'green', color: 'white', padding: '10px', marginBottom: '10px', marginRight: '10px' }}>Previous Month</button>
-      </div>
-      <svg ref={svgRef} width={width} height={height} style={{ backgroundColor: 'white' }}></svg>
-      <div style={{ display: 'flex', flexDirection: 'column' }}>
-        {/* <button className="btn btn-success" style={{ backgroundColor: 'green', color: 'white', padding: '10px', marginBottom: '10px', marginRight: '10px' }}>Date Range</button> */}
-        <button className="btn btn-success" style={{ backgroundColor: 'green', color: 'white', padding: '10px', marginBottom: '10px', marginRight: '10px' }}>Next Month</button>
-      </div>
-    </div>
+    <Box sx={{ flexGrow: 1, p: 3 }}>
+      <Grid container spacing={3}>
+        {/* Bar Chart */}
+        <Grid item xs={6}>
+          <Paper style={{ padding: '20px', minHeight: '300px' }}>
+            <Typography variant="h5">Monthly Spending</Typography>
+            <BarChart />
+          </Paper>
+        </Grid>
+        {/* Pie Chart */}
+        <Grid item xs={6}>
+          <Paper style={{ padding: '20px', minHeight: '300px' }}>
+            <Typography variant="h5">Spending Groups</Typography>
+            <PieChart />
+          </Paper>
+        </Grid>
+        {/* Data Grid */}
+        <Grid item xs={12}>
+          <Paper style={{ padding: '20px', minHeight: '400px' }}>
+            <Typography variant="h5">Transaction History</Typography>
+            <TransactionGrid />
+          </Paper>
+        </Grid>
+      </Grid>
+    </Box>
   );
 }
 

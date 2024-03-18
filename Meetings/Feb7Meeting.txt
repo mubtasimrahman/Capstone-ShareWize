@@ -1,0 +1,8 @@
+Purpose: To collaboratively develop the Software Verification and Validation (V&V) plan, outlining how the system will be tested and validated to ensure it fulfills the requirements of the application.
+Attendees: Full team
+
+Actions Agreed Upon:
+Finalize the V&V plan document based on the discussed strategies, methods, and responsibilities.
+Begin preparation for test scenario creation and test case development based on the agreed-upon plan.
+Having whoever is available look over the document again before submitting
+Each team member to contribute to the completion of the V&V plan document, providing input and feedback as necessary.

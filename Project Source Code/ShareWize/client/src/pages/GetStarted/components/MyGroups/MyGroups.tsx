@@ -5,6 +5,7 @@ import axios from "axios";
 import "./MyGroups.css";
 import { useSelector } from "react-redux";
 import { RootState } from "../../../../App/store/store";
+import Button from "@mui/material/Button";
 
 // Define an interface for the group object
 interface Group {
@@ -154,15 +155,22 @@ function MyGroups({ onGroupClick, userId }: MyGroupsProps) {
         )}
         <h5>My Groups</h5>
         {groups.length ? (
-          <ul>
+          <div className="group-buttons">
             {groups.map((group) => (
-              <li key={group.GroupId}>
-                <a href="#" onClick={() => handleGroupClick(group)}>
-                  {group.GroupName}
-                </a>
-              </li>
+              <Button
+                key={group.GroupId}
+                style={{
+                  backgroundColor: "#198754",
+                  marginRight: "10px",
+                  marginBottom: "10px",
+                }}
+                variant="contained"
+                onClick={() => handleGroupClick(group)}
+              >
+                {group.GroupName}
+              </Button>
             ))}
-          </ul>
+          </div>
         ) : (
           <p>No groups found.</p>
         )}

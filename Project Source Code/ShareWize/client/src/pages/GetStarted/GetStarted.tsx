@@ -7,6 +7,7 @@ import { useSelector } from "react-redux";
 import { RootState } from "../../App/store/store";
 import axios from "axios";
 import "./GetStarted.css";
+import Button from '@mui/material/Button';
 
 interface Group {
   GroupId: number;
@@ -104,7 +105,7 @@ function GetStarted() {
           { (
             !groupId &&
             !showGroupForm && !showForms && (
-              <button onClick={handleCreateGroupClick}>Create Group</button>
+              <Button style={{backgroundColor:"#198754"}} variant="contained" onClick={handleCreateGroupClick}>Create Group</Button>
             )
           )}
           {showGroupForm && (

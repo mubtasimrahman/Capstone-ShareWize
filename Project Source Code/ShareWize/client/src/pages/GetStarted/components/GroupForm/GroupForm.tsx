@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import axios from "axios";
 import "./GroupForm.css";
+import Button from '@mui/material/Button';
 
 interface GroupFormProps {
   setGroupId: React.Dispatch<React.SetStateAction<number | null>>;
@@ -84,7 +85,7 @@ function GroupForm({ setGroupId, onNext, userId, onGroupNameChange }: GroupFormP
             onChange={(e) => setGroupName(e.target.value)}
           />
         </label>
-        <button onClick={handleCreateGroup}>Create Group</button>
+        <Button style={{backgroundColor:"#198754"}} variant="contained" onClick={handleCreateGroup}>Create Group</Button>
       </div>
     </div>
   );

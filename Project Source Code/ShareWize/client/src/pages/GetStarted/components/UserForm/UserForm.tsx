@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import "./UserForm.css";
+import Button from "@mui/material/Button";
 
 interface UserFormProps {
   groupId: number | null;
@@ -72,9 +73,9 @@ function UserForm({ groupId, userId }: UserFormProps) {
         {/* <button className="next-button" onClick={addUserToGroup}>
           Add User to Group
         </button> */}
-        <button className="next-button" onClick={sendGroupMembershipRequest}>
+        <Button style={{backgroundColor:"#198754"}} variant="contained" className="next-button" onClick={sendGroupMembershipRequest}>
           Send Request
-        </button>
+        </Button>
       </div>
       {/* Display list of group users */}
       <div className="section">

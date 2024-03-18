@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import "./ExpenseForm.css";
+import Button from "@mui/material/Button";
+import Stack from "@mui/material/Stack";
 
 interface ExpenseFormProps {
   groupId: number | null;
@@ -26,7 +28,9 @@ function ExpenseForm({ groupId, userId }: ExpenseFormProps) {
   const [amount, setAmount] = useState("");
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [customizing, setCustomizing] = useState<boolean>(false);
-  const [customPercentages, setCustomPercentages] = useState<{ [key: number]: number }>({});
+  const [customPercentages, setCustomPercentages] = useState<{
+    [key: number]: number;
+  }>({});
   const [groupUsers, setGroupUsers] = useState<User[]>([]); // State to store group users
 
   // Function to fetch and update group users
@@ -100,7 +104,7 @@ function ExpenseForm({ groupId, userId }: ExpenseFormProps) {
       )
       .then((response) => {
         console.log("successfully added expense");
-        console.log(response)
+        console.log(response);
         // After adding the expense, fetch expenses again to update the list
         fetchExpenses(groupId || 0);
       })
@@ -111,10 +115,10 @@ function ExpenseForm({ groupId, userId }: ExpenseFormProps) {
         // Any cleanup or additional logic after success or failure
       });
   };
-  
+
   const handleAddExpense = () => {
     let finalPercentages = customPercentages; // Initialize with custom percentages
-  
+
     // If no custom percentages are provided, calculate equal split among group users
     if (Object.keys(finalPercentages).length === 0) {
       const equalPercentage = 100 / groupUsers.length;
@@ -124,18 +128,27 @@ function ExpenseForm({ groupId, userId }: ExpenseFormProps) {
       }, {} as { [key: number]: number });
     } else {
       // If custom percentages are provided, ensure they sum up to 100%
-      const totalPercentage = Object.values(finalPercentages).reduce((acc, val) => acc + val, 0);
+      const totalPercentage = Object.values(finalPercentages).reduce(
+        (acc, val) => acc + val,
+        0
+      );
       if (totalPercentage !== 100) {
         alert("Total percentage must equal 100%");
         return;
       }
     }
-  
+
     // Now call addExpense with the final percentages and groupUsers
-    addExpense(description, parseFloat(amount), userId || 0, groupId || 0, groupUsers, finalPercentages);
+    addExpense(
+      description,
+      parseFloat(amount),
+      userId || 0,
+      groupId || 0,
+      groupUsers,
+      finalPercentages
+    );
   };
-  
-  
+
   return (
     <div className={`container-expense ${groupId === null ? "hidden" : ""}`}>
       <div className="section">
@@ -154,14 +167,22 @@ function ExpenseForm({ groupId, userId }: ExpenseFormProps) {
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
         />
-        <button onClick={handleCustomize}>
-          Customize Split
-        </button>
-        <button 
-          onClick={handleAddExpense}
-        >
-          Add Expense
-        </button>
+        <Stack spacing={2} direction="row">
+          <Button
+            style={{ backgroundColor: "#198754" }}
+            variant="contained"
+            onClick={handleCustomize}
+          >
+            Customize Split
+          </Button>
+          <Button
+            style={{ backgroundColor: "#198754" }}
+            variant="contained"
+            onClick={handleAddExpense}
+          >
+            Add Expense
+          </Button>
+        </Stack>
         {customizing && (
           <div className="section">
             <h2>Customize Expense Split</h2>
@@ -172,7 +193,9 @@ function ExpenseForm({ groupId, userId }: ExpenseFormProps) {
                   type="text"
                   placeholder="Percentage"
                   value={customPercentages[user.UserId] || ""}
-                  onChange={(e) => handleCustomPercentChange(user.UserId, e.target.value)}
+                  onChange={(e) =>
+                    handleCustomPercentChange(user.UserId, e.target.value)
+                  }
                 />
               </div>
             ))}
@@ -186,7 +209,8 @@ function ExpenseForm({ groupId, userId }: ExpenseFormProps) {
             <li key={expense.ExpenseId}>
               Description: {expense.Description} <br />
               Amount: ${expense.Amount} <br />
-              Expense Maker: {expense.UserName} <br /><br />
+              Expense Maker: {expense.UserName} <br />
+              <br />
             </li>
           ))}
         </ul>

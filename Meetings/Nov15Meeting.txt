@@ -1,0 +1,15 @@
+- Purpose: To prepare and practice the presentation for the proof of concept demonstration to TAs/Instructor, and to create the accompanying slides.
+- Attendees: Full team
+
+- Overview of Proof of Concept: Recap of the core features and functionalities of the Expense Simplification and Management Application to be demonstrated.
+
+- Presentation Structure:
+Introduction: Background and objectives of the project.
+Problem Statement: Description of the problem the application solves.
+Solution Overview: How the application addresses the problem.
+Demonstration: Live demo or walkthrough of what we had completed thsu far.
+Q&A: Allocating time for questions from TAs/Instructors.
+
+- Practice Session:
+Initial run-through of the presentation to assess timing and flow.
+Feedback from team members on clarity, content, and delivery.

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
 import "./UserForm.css";
 import Button from "@mui/material/Button";
@@ -22,15 +22,21 @@ function UserForm({ groupId, userId }: UserFormProps) {
   const [groupUsers, setGroupUsers] = useState<User[]>([]);
 
   const fetchGroupUsers = () => {
-    axios
-      .get(`http://localhost:8000/groups/${groupId}/users`)
-      .then((response) => {
-        setGroupUsers(response.data);
-      })
-      .catch((error) => {
-        console.error("Error fetching group users:", error);
-      });
+    if (groupId) {
+      axios
+        .get(`http://localhost:8000/groups/${groupId}/users`)
+        .then((response) => {
+          setGroupUsers(response.data);
+        })
+        .catch((error) => {
+          console.error("Error fetching group users:", error);
+        });
+    }
   };
+
+  useEffect(() => {
+    fetchGroupUsers();
+  }, [groupId]); // Fetch group users when groupId changes
 
   const sendGroupMembershipRequest = async () => {
     setLoading(true);
@@ -49,6 +55,8 @@ function UserForm({ groupId, userId }: UserFormProps) {
       );
       console.log("Group membership request sent:", response.data);
       setSuccess(true);
+      // Update group users after successful request
+      fetchGroupUsers();
     } catch (error) {
       console.error("Error sending group membership request:", error);
       setError(true);

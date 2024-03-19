@@ -1,16 +1,15 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import "./MyGroups.css";
 import { useSelector } from "react-redux";
-import { RootState } from "../../../../App/store/store";
 import Button from "@mui/material/Button";
+import CircularProgress from "@mui/material/CircularProgress";
 
 // Define an interface for the group object
 interface Group {
   GroupId: number;
   GroupName: string;
 }
-interface groupRequests {
+interface GroupRequest {
   RequestId: number;
   GroupId: number;
   GroupName: string;
@@ -22,9 +21,10 @@ interface MyGroupsProps {
 }
 
 function MyGroups({ onGroupClick, userId }: MyGroupsProps) {
-  const googleId = useSelector((state: RootState) => state.auth.user?.sub);
-  const [groupRequests, setGroupRequests] = useState<groupRequests[]>([]); // Modify the type based on your response structure
-  const [groups, setGroups] = useState<Group[]>([]); // Provide type information for the groups state variable
+  const googleId = useSelector((state: any) => state.auth.user?.sub);
+  const [groupRequests, setGroupRequests] = useState<GroupRequest[]>([]);
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [loadingAccept, setLoadingAccept] = useState(false); // Loading state for accepting requests
 
   useEffect(() => {
     // Fetch group requests data when component mounts
@@ -36,12 +36,8 @@ function MyGroups({ onGroupClick, userId }: MyGroupsProps) {
           },
         })
         .then((response) => {
-          console.log("Group requests response:", response.data);
-
           if (response.data) {
-            const fetchedRequests = response.data;
-            setGroupRequests(fetchedRequests);
-            console.log(fetchedRequests);
+            setGroupRequests(response.data);
           }
         })
         .catch((error) => {
@@ -60,30 +56,23 @@ function MyGroups({ onGroupClick, userId }: MyGroupsProps) {
           },
         })
         .then((response) => {
-          console.log("Groups response:", response.data);
-
           if (response.data) {
-            // Assuming the server directly returns the groups array
-            const fetchedGroups: Group[] = response.data; // Cast response.data to Group[]
-            setGroups(fetchedGroups); // Update the local state with the groups
-            console.log(fetchedGroups);
+            setGroups(response.data);
           }
-
-          // Handle the success response here
         })
         .catch((error) => {
           console.error("Error finding groups:", error);
-          // Handle errors here
         });
     }
-  }, [googleId]); // Fetch groups data when userId changes
+  }, [googleId]);
 
   const respondToGroupMembershipRequest = async (
     requestId: number,
     response: string
   ) => {
+    setLoadingAccept(true); // Set loading state to true when accepting request
     try {
-      const apiResponse = await axios.post(
+      await axios.post(
         "http://localhost:8000/respondToGroupMembershipRequest",
         {
           requestId: requestId,
@@ -96,17 +85,26 @@ function MyGroups({ onGroupClick, userId }: MyGroupsProps) {
         }
       );
 
-      console.log(
-        "Group membership request response processed:",
-        apiResponse.data
-      );
-
       // Remove the processed request from the state
       setGroupRequests((prevRequests) =>
         prevRequests.filter((request) => request.RequestId !== requestId)
       );
+
+      // Fetch updated groups after accepting the request
+      if (googleId) {
+        const response = await axios.get("http://localhost:8000/myGroups", {
+          params: {
+            googleId: googleId,
+          },
+        });
+        if (response.data) {
+          setGroups(response.data);
+        }
+      }
     } catch (error) {
       console.error("Error responding to group membership request:", error);
+    } finally {
+      setLoadingAccept(false); // Set loading state back to false after request is processed
     }
   };
 
@@ -119,35 +117,59 @@ function MyGroups({ onGroupClick, userId }: MyGroupsProps) {
     <div className="container">
       <div className="section">
         <h2>Groups</h2>
-        <h5> Requests </h5>
+        <h5>Requests</h5>
         {groupRequests.length ? (
-          <ul>
+          <div>
             {groupRequests.map((request) => (
-              <li key={request.RequestId}>
-                <p>{request.GroupName}</p>
-                <button
-                  onClick={() =>
-                    respondToGroupMembershipRequest(
-                      request.RequestId,
-                      "Accepted"
-                    )
-                  }
-                >
-                  Accept
-                </button>
-                <button
-                  onClick={() =>
-                    respondToGroupMembershipRequest(
-                      request.RequestId,
-                      "Declined"
-                    )
-                  }
-                >
-                  Decline
-                </button>
-              </li>
+              <div key={request.RequestId} className="request-container">
+                <div>{request.GroupName}</div>
+                <div className="button-container">
+                  <Button
+                    style={{
+                      backgroundColor: "#198754",
+                      width: "50%",
+                      marginRight: "5px",
+                    }}
+                    variant="contained"
+                    disabled={loadingAccept} // Disable button when loading
+                    onClick={() =>
+                      respondToGroupMembershipRequest(
+                        request.RequestId,
+                        "Accepted"
+                      )
+                    }
+                  >
+                    {loadingAccept ? (
+                      <CircularProgress size={24} color="inherit" />
+                    ) : (
+                      "Accept"
+                    )}
+                  </Button>
+                  <Button
+                    style={{
+                      backgroundColor: "#DC3545",
+                      width: "50%",
+                      marginLeft: "5px",
+                    }}
+                    variant="contained"
+                    disabled={loadingAccept} // Disable button when loading
+                    onClick={() =>
+                      respondToGroupMembershipRequest(
+                        request.RequestId,
+                        "Declined"
+                      )
+                    }
+                  >
+                    {loadingAccept ? (
+                      <CircularProgress size={24} color="inherit" />
+                    ) : (
+                      "Decline"
+                    )}
+                  </Button>
+                </div>
+              </div>
             ))}
-          </ul>
+          </div>
         ) : (
           <p>No group requests found.</p>
         )}

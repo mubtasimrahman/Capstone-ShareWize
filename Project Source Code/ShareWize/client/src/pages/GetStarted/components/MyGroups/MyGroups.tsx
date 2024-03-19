@@ -127,7 +127,7 @@ function MyGroups({ onGroupClick, userId }: MyGroupsProps) {
                   <Button
                     style={{
                       backgroundColor: "#198754",
-                      width: "50%",
+                      flex: 1,
                       marginRight: "5px",
                     }}
                     variant="contained"
@@ -148,7 +148,7 @@ function MyGroups({ onGroupClick, userId }: MyGroupsProps) {
                   <Button
                     style={{
                       backgroundColor: "#DC3545",
-                      width: "50%",
+                      flex: 1,
                       marginLeft: "5px",
                     }}
                     variant="contained"

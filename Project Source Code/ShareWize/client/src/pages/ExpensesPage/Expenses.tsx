@@ -302,7 +302,7 @@ export default function Expenses() {
         </div>
       </div>
       <TableContainer component={Paper}>
-      {/* <Table size="small">
+      <Table size="small">
         <TableHead style={{ backgroundColor: '#198754', height: "75px"}}>
           <TableRow>
             <TableCell style={{color: "white", fontSize: "18px", fontWeight: "bold"}}>Description</TableCell>
@@ -332,7 +332,6 @@ export default function Expenses() {
         <TableCell>${expense.Amount}</TableCell>
         <TableCell>{expense.GroupName}</TableCell>
         <TableCell>{new Date(expense.DatePaid).toLocaleDateString()}</TableCell>
-        <TableCell>{new Date(expense.).toLocaleDateString()}</TableCell>
         <TableCell>
           {expenseSplit[index]?.map((split, idx) => {
             return (
@@ -356,7 +355,7 @@ export default function Expenses() {
       </TableRow>
     ))}
 </TableBody>
-      </Table> */}
+      </Table>
       </TableContainer>
       <ul className="list-unstyled">
         {loading && <h3 style={{ color: "white" }}>Loading...</h3>}

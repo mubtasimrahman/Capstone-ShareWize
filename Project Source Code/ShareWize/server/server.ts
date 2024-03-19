@@ -464,13 +464,16 @@ const insertExpenseIntoDatabase = async (
         const splitPromises = groupUsers.map(async (user) => {
           const percentage =
             customPercentages[user.UserId] || 100 / groupUsers.length;
+          const status = user.UserId === userId ? "Settled" : "Pending"; // Set status based on user
           await pool
             .request()
             .input("expenseId", sql.Int, expenseId)
             .input("userId", sql.Int, user.UserId)
-            .input("percentage", sql.Decimal(5, 2), percentage).query(`
-              INSERT INTO ExpenseSplit (ExpenseId, UserId, Percentage)
-              VALUES (@expenseId, @userId, @percentage)
+            .input("percentage", sql.Decimal(5, 2), percentage)
+            .input("status", sql.NVarChar(20), status) // Include status input
+            .query(`
+              INSERT INTO ExpenseSplit (ExpenseId, UserId, Percentage, Status)
+              VALUES (@expenseId, @userId, @percentage, @status)
             `);
         });
 
@@ -1098,16 +1101,38 @@ const getExpensesByUserId = async (userId: number): Promise<any[]> => {
 
     // Query to get all expenses for the specified user by user ID
     const result = await pool.request().input("userId", sql.Int, userId).query(`
-        SELECT g.GroupName, g.GroupId, e.Description, e.Amount, e.DatePaid, e.ExpenseId
-        FROM Expenses e 
-        INNER JOIN Groups g ON g.GroupId = e.GroupId
-        INNER JOIN GroupMembershipsExample m ON e.GroupId = m.GroupId
-        WHERE m.UserId = @userId
+    SELECT g.GroupName, g.GroupId, e.Description, e.Amount, e.DatePaid, e.ExpenseId,
+    u.DisplayName AS ExpenseMakerDisplayName, u.Email AS ExpenseMakerEmail,u.UserId AS ExpenseMakerUserId,
+    STRING_AGG(u2.DisplayName, ', ') AS OtherMemberDisplayNames,
+    STRING_AGG(u2.Email, ', ') AS OtherMemberEmails,
+    STRING_AGG(u2.UserId, ', ') AS OtherMemberUserIds
+FROM Expenses e 
+INNER JOIN Groups g ON g.GroupId = e.GroupId
+INNER JOIN GroupMembershipsExample m ON e.GroupId = m.GroupId
+INNER JOIN Users u ON e.UserId = u.UserId
+INNER JOIN GroupMembershipsExample m2 ON m2.GroupId = e.GroupId AND m2.UserId != e.UserId
+INNER JOIN Users u2 ON m2.UserId = u2.UserId
+WHERE m.UserId = @userId
+GROUP BY g.GroupName, g.GroupId, e.Description, e.Amount, e.DatePaid, e.ExpenseId, u.DisplayName, u.Email, u.UserId
       `);
 
-    // Return the list of expenses for the user
-    console.log(result.recordset);
-    return result.recordset;
+    // Process the result to format OtherMemberDisplayNames and OtherMemberEmails as arrays
+    const formattedResult = result.recordset.map((row) => {
+      return {
+        ...row,
+        OtherMemberDisplayNames: row.OtherMemberDisplayNames
+          ? row.OtherMemberDisplayNames.split(", ")
+          : [],
+        OtherMemberEmails: row.OtherMemberEmails
+          ? row.OtherMemberEmails.split(", ")
+          : [],
+        OtherMemberUserIds: row.OtherMemberUserIds
+          ? row.OtherMemberUserIds.split(", ")
+          : [],
+      };
+    });
+
+    return formattedResult;
   } catch (error) {
     console.error("Error fetching expenses for user from the database:", error);
     throw error;
@@ -1148,6 +1173,7 @@ app.get(
     const expenseIds = req.query.expenseIds; // Retrieve expense IDs from query params
 
     if (!userId || !expenseIds) {
+      console.error("User ID or Expense IDs are missing");
       return res.status(400).send("User ID or Expense IDs are missing");
     }
 
@@ -1175,6 +1201,9 @@ const getExpenseSplitByUserIdAndExpenseIds = async (
   userId: number,
   expenseIds: number[]
 ): Promise<any[]> => {
+  // Check if expenseIds is a single number, convert it to an array
+  const idsArray = Array.isArray(expenseIds) ? expenseIds : [expenseIds];
+
   let pool: sql.ConnectionPool;
 
   // Connect to the database
@@ -1182,6 +1211,7 @@ const getExpenseSplitByUserIdAndExpenseIds = async (
     .connect(config)
     .then(async (p) => {
       pool = p;
+      pool.setMaxListeners(20); // Set the maximum number of listeners to 20
 
       // Query to retrieve expense split data for the user and expense IDs
       const result = await pool
@@ -1189,12 +1219,21 @@ const getExpenseSplitByUserIdAndExpenseIds = async (
         .input("userId", sql.Int, userId)
         .input("expenseIds", sql.NVarChar, expenseIds.join(",")) // Pass expense IDs as a comma-separated string
         .query(`
-          SELECT es.ExpenseId, es.Percentage
-          FROM ExpenseSplit es
-          INNER JOIN Expenses e ON es.ExpenseId = e.ExpenseId
-          WHERE es.UserId = @userId AND es.ExpenseId IN (@expenseIds)
+        SELECT es.ExpenseId, es.Percentage, 
+        ess.Status AS SettlementStatus,
+        ess.Amount AS SettlementAmount,
+        ess.ExpenseSplitId,
+        ess.SettlementDate
+ FROM ExpenseSplit es
+ INNER JOIN Expenses e ON es.ExpenseId = e.ExpenseId
+ LEFT JOIN ExpenseSettlements ess ON es.ExpenseSplitId = ess.ExpenseSplitId
+ WHERE (es.UserId = @userId OR ess.PayeeUserId = @userId) AND es.ExpenseId IN (@expenseIds);
+ 
+ 
+ 
         `);
 
+      console.log(result.recordset,userId);
       return result.recordset;
     })
     .catch((error) => {
@@ -1266,6 +1305,89 @@ const getExpenseSplitByUserIdAndExpenseIds = async (
 //       }
 //     });
 // };
+
+// Handler for sending expense settlment request
+app.post(
+  "/settleExpense",
+  cors(),
+  express.json(),
+  async (req: Request, res: Response) => {
+    try {
+      const { expenseId, amount, payerUserId, payeeUserId } = req.body;
+      console.log(req.body);
+
+      // Validate request parameters
+      if (!expenseId || typeof amount !== "number") {
+        return res.status(400).send("Invalid request parameters");
+      }
+
+      // Connect to the database
+      const pool = await sql.connect(config);
+
+      // Fetch the corresponding expense split details using expenseId
+      const splitResult = await pool
+        .request()
+        .input("expenseId", sql.Int, expenseId)
+        .input("payerUserId", sql.Int, payerUserId).query(`
+        SELECT es.ExpenseSplitId, es.Percentage, e.Amount AS ActualAmount
+        FROM ExpenseSplit es
+        INNER JOIN Expenses e ON es.ExpenseId = e.ExpenseId
+        WHERE es.ExpenseId = @expenseId
+          AND es.UserId = @payerUserId
+        `);
+
+      if (splitResult.recordset.length === 0) {
+        return res.status(404).send("Expense split not found");
+      }
+
+      console.log(splitResult);
+
+      const expenseSplitId = splitResult.recordset[0].ExpenseSplitId;
+      const percentage = splitResult.recordset[0].Percentage;
+      const actualAmount = splitResult.recordset[0].ActualAmount;
+
+      // Calculate the amount for the expense split
+      const splitAmount = (actualAmount * percentage) / 100;
+
+      // Start a transaction
+      const transaction = new sql.Transaction(pool);
+      await transaction.begin();
+
+      try {
+        // Insert a record into ExpenseSettlements table with status 'Pending'
+        const insertQuery = `
+          INSERT INTO ExpenseSettlements (ExpenseSplitId, PayerUserId, PayeeUserId, Amount, Status)
+          VALUES (@expenseSplitId, @payerUserId, @payeeUserId, @amount, 'Pending');
+        `;
+        const request = new sql.Request(transaction);
+        request.input("expenseSplitId", sql.Int, expenseSplitId);
+        request.input("payerUserId", sql.Int, payerUserId);
+        request.input("payeeUserId", sql.Int, payeeUserId);
+        request.input("amount", sql.Decimal(10, 2), amount);
+        await request.query(insertQuery);
+
+        // Commit the transaction
+        await transaction.commit();
+
+        // Send response
+        res.status(200).send("Expense settlement request sent successfully");
+      } catch (error) {
+        // Rollback transaction on error
+        await transaction.rollback();
+        console.error("Error settling expense:", error);
+        res.status(500).send("Internal Server Error");
+      } finally {
+        // Close the SQL Server connection
+        await pool.close();
+      }
+    } catch (error) {
+      console.error("Error connecting to the database:", error);
+      res.status(500).send("Internal Server Error");
+    }
+  }
+);
+
+
 
 app.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);

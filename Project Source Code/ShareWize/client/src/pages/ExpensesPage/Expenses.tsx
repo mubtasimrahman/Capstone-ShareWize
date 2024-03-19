@@ -106,8 +106,6 @@ export default function Expenses() {
         }
       );
 
-
-
       // Handle success
       console.log("Expense settled successfully:", response.data);
     } catch (error: any) {
@@ -191,7 +189,7 @@ export default function Expenses() {
         const batchExpenseSplitData = batchExpenseSplitResponses.map(
           (response) => response.data
         );
-        console.log(batchExpenseSplitData)
+        console.log(batchExpenseSplitData);
         // Include ExpenseMakerUserId in each expenseSplit object
         const expenseSplitWithMakerId = batchExpenseSplitData.map(
           (expenseSplit, index) =>
@@ -221,9 +219,9 @@ export default function Expenses() {
           }
         });
       }
-      
-      console.log(expenseSplitData);
-      console.log(settlementInfoData);
+
+      // console.log(expenseSplitData);
+      // console.log(settlementInfoData);
       setExpenseSplit(expenseSplitData);
       setSettlementInfo(settlementInfoData);
     } catch (error) {
@@ -256,8 +254,12 @@ export default function Expenses() {
     throw new Error("Function not implemented.");
   }
 
-  // console.log("My expenses:", expenses)
-  // console.log("original", expenses.toLocaleString)
+  console.log("settlementInfo:", settlementInfo);
+  console.log("currentUser:", currentUser);
+  console.log(
+    "Expense Maker User Ids:",
+    expenses.map((expense) => expense.ExpenseMakerUserId)
+  );
 
   return (
     <div className="container-fluid expense-container">
@@ -308,7 +310,7 @@ export default function Expenses() {
         )}
         {!loading &&
           expenses.length > 0 &&
-          sortExpenses(expenses).map((expense, index) => (
+          sortExpenses(expenses).map((expense) => (
             <li key={expense.ExpenseId} className="expense-item">
               <div className="expense-details">
                 <p className="expense-description">
@@ -341,66 +343,68 @@ export default function Expenses() {
                   })}
                 </p>
                 {/* Display expense split information */}
-                {expenseSplit[index].map((split, idx) => {
-                  // Calculate the amount owed based on the percentage
-                  const amountOwed =
-                    (expense.Amount * Number(split.Percentage)) / 100;
-                  return (
-                    <div key={idx}>
-                      <p className="expense-amount">
-                        Percentage: {split.Percentage}%
-                      </p>
-                      <p className="expense-amount">
-                        Amount owed: ${amountOwed.toFixed(2)}
-                      </p>
-                    </div>
-                  );
-                })}
+                {expenseSplit
+                  .find((splitArray) =>
+                    splitArray.some(
+                      (split) => split.ExpenseId === expense.ExpenseId
+                    )
+                  )
+                  ?.map((split, idx) => {
+                    // Calculate the amount owed based on the percentage
+                    const amountOwed =
+                      (expense.Amount * Number(split.Percentage)) / 100;
+                    return (
+                      <div key={idx}>
+                        <p className="expense-amount">
+                          Percentage: {split.Percentage}%
+                        </p>
+                        <p className="expense-amount">
+                          Amount owed: ${amountOwed.toFixed(2)}
+                        </p>
+                      </div>
+                    );
+                  })}
 
                 {/* Add accept and decline buttons for settlement */}
-                {settlementInfo[index] &&
-                  settlementInfo[index].ExpenseSplitId &&
-                  settlementInfo[index].SettlementStatus === "Pending" &&
-                  currentUser &&
-                  currentUser.UserId == expense.ExpenseMakerUserId && (
-                    <div>
-                      <button
-                        className="btn btn-success"
-                        onClick={() =>
-                          handleAcceptSettlement(expense.ExpenseId)
-                        }
-                      >
-                        Accept
-                      </button>
-                      <button
-                        className="btn btn-danger"
-                        onClick={() =>
-                          handleAcceptSettlement(expense.ExpenseId)
-                        }
-                      >
-                        Decline
-                      </button>
-                    </div>
+                {settlementInfo
+                  .filter((info) => info.ExpenseId === expense.ExpenseId)
+                  .map((info, idx) =>
+                    info.SettlementStatus === "Pending" &&
+                    currentUser &&
+                    currentUser.UserId === expense.ExpenseMakerUserId ? (
+                      <div key={idx}>
+                        <button
+                          className="btn btn-success"
+                          onClick={() =>
+                            handleAcceptSettlement(expense.ExpenseId)
+                          }
+                        >
+                          Accept
+                        </button>
+                        <button
+                          className="btn btn-danger"
+                          onClick={() =>
+                            handleAcceptSettlement(expense.ExpenseId)
+                          }
+                        >
+                          Decline
+                        </button>
+                      </div>
+                    ) : null
                   )}
 
                 {/* Add button to settle expense */}
-                {expenseSplit[index] &&
-                  expenseSplit[index].some(
-                    (split) =>
-                      (expense.Amount * Number(split.Percentage)) / 100 > 0
-                  ) &&
-                  // Conditionally render the "Settle Expense" button
-                  (!currentUser ||
-                  currentUser.UserId !== expense.ExpenseMakerUserId ? (
-                    <button
-                      className="btn btn-primary"
-                      data-bs-toggle="modal"
-                      data-bs-target={`#exampleModal-${expense.ExpenseId}`}
-                      onClick={() => setSelectedExpense(expense)}
-                    >
-                      Settle Expense
-                    </button>
-                  ) : null)}
+                {!currentUser ||
+                currentUser.UserId !== expense.ExpenseMakerUserId ? (
+                  <button
+                    className="btn btn-primary"
+                    data-bs-toggle="modal"
+                    data-bs-target={`#exampleModal-${expense.ExpenseId}`}
+                    onClick={() => setSelectedExpense(expense)}
+                  >
+                    Settle Expense
+                  </button>
+                ) : null}
               </div>
             </li>
           ))}

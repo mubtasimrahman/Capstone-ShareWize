@@ -1,11 +1,7 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import axios from 'axios'; // Import axios
-import { scaleLinear, scaleTime } from 'd3-scale';
-import { select } from 'd3-selection';
-import { axisBottom, axisLeft } from 'd3-axis';
 import { RootState } from '../../App/store/store';
 import { useSelector } from 'react-redux';
-import { styled } from '@mui/material/styles';
 import { Box, Grid, Paper, Typography } from '@mui/material';
 import TransactionGrid from './TransactionGrid';
 import BarChart from './BarChart';
@@ -27,13 +23,10 @@ interface UserObject {
 }
 
 export default function SampleLineGraph() {
-  const svgRef = useRef<SVGSVGElement>(null);
   const googleId = useSelector((state: RootState) => state.auth.user?.sub);
   const [currentUser, setCurrentUser] = useState<UserObject | undefined>();
   const [data, setData] = useState<{ date: Date; value: number }[]>([]);
 
-  const width = 600;
-  const height = 600;
 
   // Function to format date string to Date object
   const formatDate = (dateString: string) => {
@@ -84,55 +77,6 @@ export default function SampleLineGraph() {
     }));
     setData(formattedData);
   }, []);
-
-  useEffect(() => {
-    const svg = select(svgRef.current);
-    svg.selectAll('*').remove();
-
-    const margin = { top: 60, right: 60, bottom: 60, left: 80 };
-    const innerWidth = width - margin.left - margin.right;
-    const innerHeight = height - margin.top - margin.bottom;
-
-    const xScale = scaleTime()
-      .domain([new Date(2024, 0, 1), new Date(2024, 0, 7)])
-      .range([0, innerWidth]);
-
-    const yMin = Math.min(...data.map(d => d.value));
-    const yMax = Math.max(...data.map(d => d.value));
-    const topMargin = 50;
-
-    const yScale = scaleLinear()
-      .domain([0, yMax + topMargin])
-      .range([innerHeight, topMargin]);
-
-    svg.selectAll('rect')
-      .data(data)
-      .enter()
-      .append('rect')
-      .attr('x', (d, i) => xScale(d.date) + margin.left)
-      .attr('y', d => yScale(d.value - 120))
-      .attr('width', (innerWidth / data.length) * 0.8)
-      .attr('height', d => innerHeight - yScale(d.value))
-      .attr('fill', 'steelblue');
-
-    svg.append('g')
-      .attr('transform', `translate(${margin.left}, ${innerHeight + topMargin})`)
-      .call(axisBottom(xScale).ticks(7));
-
-    svg.append('g')
-      .attr('transform', `translate(${margin.left}, ${topMargin})`)
-      .call(axisLeft(yScale).ticks(18));
-
-    svg.append('text')
-      .attr('transform', `translate(${width / 2},${height - margin.bottom / 3})`)
-      .style('text-anchor', 'middle')
-      .text('Days');
-
-    svg.append('text')
-      .attr('transform', `translate(${margin.left / 2},${height / 2})rotate(-90)`)
-      .style('text-anchor', 'middle')
-      .text('Money');
-  }, [data]);
 
   return (
     <Box sx={{ flexGrow: 1, p: 3 }}>

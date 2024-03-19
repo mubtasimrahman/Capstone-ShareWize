@@ -127,7 +127,13 @@ function MyGroups({ onGroupClick, userId }: MyGroupsProps) {
             {groupRequests.map((request) => (
               <li key={request.RequestId}>
                 <p>{request.GroupName}</p>
-                <button
+                <Button
+                  style={{
+                    backgroundColor: "#198754",
+                    marginRight: "10px",
+                    marginBottom: "10px",
+                  }}
+                  variant="contained"
                   onClick={() =>
                     respondToGroupMembershipRequest(
                       request.RequestId,
@@ -136,8 +142,14 @@ function MyGroups({ onGroupClick, userId }: MyGroupsProps) {
                   }
                 >
                   Accept
-                </button>
-                <button
+                </Button>
+                <Button
+                  style={{
+                    backgroundColor: "#198754",
+                    marginRight: "10px",
+                    marginBottom: "10px",
+                  }}
+                  variant="contained"
                   onClick={() =>
                     respondToGroupMembershipRequest(
                       request.RequestId,
@@ -146,7 +158,7 @@ function MyGroups({ onGroupClick, userId }: MyGroupsProps) {
                   }
                 >
                   Decline
-                </button>
+                </Button>
               </li>
             ))}
           </ul>

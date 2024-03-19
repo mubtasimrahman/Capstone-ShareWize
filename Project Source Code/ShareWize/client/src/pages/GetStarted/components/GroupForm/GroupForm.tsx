@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import axios from "axios";
 import "./GroupForm.css";
 import Button from '@mui/material/Button';
+import CircularProgress from '@mui/material/CircularProgress';
 
 interface GroupFormProps {
   setGroupId: React.Dispatch<React.SetStateAction<number | null>>;
@@ -12,9 +13,12 @@ interface GroupFormProps {
 
 function GroupForm({ setGroupId, onNext, userId, onGroupNameChange }: GroupFormProps) {
   const [groupName, setGroupName] = useState("");
+  const [loading, setLoading] = useState(false);
   const [groupCreated, setGroupCreated] = useState(false); // Track if the group is created
+  const [groupFailed, setGroupFailed] = useState(false); // Track if the group creation failed
 
   const handleCreateGroup = async () => {
+    setLoading(true); // Set loading state to true when group creation starts
     try {
       const response = await axios.post(
         "http://localhost:8000/createGroup",
@@ -64,12 +68,34 @@ function GroupForm({ setGroupId, onNext, userId, onGroupNameChange }: GroupFormP
       }
     } catch (error) {
       console.error("Error creating group:", error);
+      setGroupFailed(true); // Set groupFailed to true if group creation fails
+    } finally {
+      setLoading(false); // Set loading state to false after group creation is complete
     }
   };
-  
 
   if (groupCreated) {
-    return null; // If the group is created, hide the GroupForm component
+    setTimeout(() => setGroupCreated(false), 3000); // Hide the success check mark after 3 seconds
+    return (
+      <div className="container">
+        <div className="section">
+          <h2>Group Created Successfully</h2>
+          <span style={{ color: 'green', fontSize: 50 }}>✔️</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (groupFailed) {
+    setTimeout(() => setGroupFailed(false), 3000); // Hide the X mark after 3 seconds
+    return (
+      <div className="container">
+        <div className="section">
+          <h2>Group Creation Failed</h2>
+          <span style={{ color: 'red', fontSize: 50 }}>❌</span>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -85,7 +111,14 @@ function GroupForm({ setGroupId, onNext, userId, onGroupNameChange }: GroupFormP
             onChange={(e) => setGroupName(e.target.value)}
           />
         </label>
-        <Button style={{backgroundColor:"#198754"}} variant="contained" onClick={handleCreateGroup}>Create Group</Button>
+        <Button
+          style={{ backgroundColor: "#198754" }}
+          variant="contained"
+          onClick={handleCreateGroup}
+          disabled={loading} // Disable the button when loading
+        >
+          {loading ? <CircularProgress color="inherit" size={24} /> : "Create Group"}
+        </Button>
       </div>
     </div>
   );

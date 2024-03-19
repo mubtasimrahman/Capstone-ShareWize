@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import axios from "axios";
 import "./UserForm.css";
 import Button from "@mui/material/Button";
+import CircularProgress from "@mui/material/CircularProgress";
 
 interface UserFormProps {
   groupId: number | null;
@@ -15,10 +16,11 @@ interface User {
 
 function UserForm({ groupId, userId }: UserFormProps) {
   const [userEmail, setUserEmail] = useState("");
-  const [userAdded, setUserAdded] = useState(false); // State to track whether user is added
-  const [groupUsers, setGroupUsers] = useState<User[]>([]); // State to store group users
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState(false);
+  const [groupUsers, setGroupUsers] = useState<User[]>([]);
 
-  // Function to fetch and update group users
   const fetchGroupUsers = () => {
     axios
       .get(`http://localhost:8000/groups/${groupId}/users`)
@@ -30,15 +32,8 @@ function UserForm({ groupId, userId }: UserFormProps) {
       });
   };
 
-  useEffect(() => {
-    if (groupId) {
-      fetchGroupUsers(); // Fetch group users when groupId changes
-    }
-  }, [groupId]);
-
- 
-
   const sendGroupMembershipRequest = async () => {
+    setLoading(true);
     try {
       const response = await axios.post(
         `http://localhost:8000/sendGroupMembershipRequest/${groupId}`,
@@ -52,10 +47,17 @@ function UserForm({ groupId, userId }: UserFormProps) {
           },
         }
       );
-
       console.log("Group membership request sent:", response.data);
+      setSuccess(true);
     } catch (error) {
       console.error("Error sending group membership request:", error);
+      setError(true);
+    } finally {
+      setLoading(false);
+      setTimeout(() => {
+        setSuccess(false);
+        setError(false);
+      }, 5000);
     }
   };
 
@@ -70,14 +72,24 @@ function UserForm({ groupId, userId }: UserFormProps) {
           value={userEmail}
           onChange={(e) => setUserEmail(e.target.value)}
         />
-        {/* <button className="next-button" onClick={addUserToGroup}>
-          Add User to Group
-        </button> */}
-        <Button style={{backgroundColor:"#198754"}} variant="contained" className="next-button" onClick={sendGroupMembershipRequest}>
-          Send Request
+        <Button
+          style={{ backgroundColor: "#198754" }}
+          variant="contained"
+          className="next-button"
+          onClick={sendGroupMembershipRequest}
+          disabled={loading}
+        >
+          {loading ? (
+            <CircularProgress color="inherit" size={24} />
+          ) : success ? (
+            "Sent ✔️"
+          ) : error ? (
+            "Error ❌"
+          ) : (
+            "Send Request"
+          )}
         </Button>
       </div>
-      {/* Display list of group users */}
       <div className="section">
         <h2>Group Users</h2>
         <ul>

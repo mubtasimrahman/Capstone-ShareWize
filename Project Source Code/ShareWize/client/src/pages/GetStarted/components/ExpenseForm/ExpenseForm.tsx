@@ -167,9 +167,9 @@ function ExpenseForm({ groupId, userId }: ExpenseFormProps) {
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
         />
-        <Stack spacing={2} direction="row">
+        <div style={{alignItems: "center", justifyContent:"flex-end"}}>
           <Button
-            style={{ backgroundColor: "#198754" }}
+            style={{ backgroundColor: "#198754", marginRight:"10px" }}
             variant="contained"
             onClick={handleCustomize}
           >
@@ -182,7 +182,7 @@ function ExpenseForm({ groupId, userId }: ExpenseFormProps) {
           >
             Add Expense
           </Button>
-        </Stack>
+        </div>
         {customizing && (
           <div className="section">
             <h2>Customize Expense Split</h2>

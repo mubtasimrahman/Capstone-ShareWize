@@ -1,5 +1,3 @@
-// MyGroups.tsx
-
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import "./MyGroups.css";
@@ -155,20 +153,20 @@ function MyGroups({ onGroupClick, userId }: MyGroupsProps) {
         )}
         <h5>My Groups</h5>
         {groups.length ? (
-          <div className="group-buttons">
+          <div>
             {groups.map((group) => (
-              <Button
-                key={group.GroupId}
-                style={{
-                  backgroundColor: "#198754",
-                  marginRight: "10px",
-                  marginBottom: "10px",
-                }}
-                variant="contained"
-                onClick={() => handleGroupClick(group)}
-              >
-                {group.GroupName}
-              </Button>
+              <div key={group.GroupId} style={{ marginBottom: "10px" }}>
+                <Button
+                  style={{
+                    backgroundColor: "#198754",
+                    width: "100%",
+                  }}
+                  variant="contained"
+                  onClick={() => handleGroupClick(group)}
+                >
+                  {group.GroupName}
+                </Button>
+              </div>
             ))}
           </div>
         ) : (

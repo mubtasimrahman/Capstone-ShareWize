@@ -19,9 +19,11 @@ interface Expense {
 }
 interface SettlementInfo {
   ExpenseId: string;
+  ExpenseSplitId: string;
   SettlementStatus: string;
   SettlementAmount: number;
   SettlementDate: Date;
+  ExpenseMakerUserId: number; // Add ExpenseMakerUserId to the interface
 }
 
 interface UserObject {
@@ -97,6 +99,8 @@ export default function Expenses() {
         }
       );
 
+
+
       // Handle success
       console.log("Expense settled successfully:", response.data);
     } catch (error: any) {
@@ -142,7 +146,7 @@ export default function Expenses() {
       handleFetchExpenses();
     }
   }, [currentUser]);
-  // console.log("Expense split:", expenseSplit);
+
   const handleFetchExpenses = async () => {
     setLoading(true);
     setFetchAttempted(true);
@@ -180,8 +184,17 @@ export default function Expenses() {
         const batchExpenseSplitData = batchExpenseSplitResponses.map(
           (response) => response.data
         );
+        console.log(batchExpenseSplitData)
+        // Include ExpenseMakerUserId in each expenseSplit object
+        const expenseSplitWithMakerId = batchExpenseSplitData.map(
+          (expenseSplit, index) =>
+            expenseSplit.map((split: any) => ({
+              ...split,
+              ExpenseMakerUserId: batch[index].ExpenseMakerUserId,
+            }))
+        );
 
-        expenseSplitData.push(...batchExpenseSplitData);
+        expenseSplitData.push(...expenseSplitWithMakerId);
 
         // Extract and store settlement info
         batchExpenseSplitData.forEach((expenseSplit, index) => {
@@ -192,14 +205,18 @@ export default function Expenses() {
           if (settlement) {
             settlementInfoData.push({
               ExpenseId: batch[index].ExpenseId,
+              ExpenseSplitId: settlement.ExpenseSplitId,
               SettlementStatus: settlement.SettlementStatus,
               SettlementAmount: settlement.SettlementAmount,
               SettlementDate: new Date(settlement.SettlementDate),
+              ExpenseMakerUserId: batch[index].ExpenseMakerUserId,
             });
           }
         });
       }
-
+      
+      console.log(expenseSplitData);
+      console.log(settlementInfoData);
       setExpenseSplit(expenseSplitData);
       setSettlementInfo(settlementInfoData);
     } catch (error) {
@@ -228,6 +245,10 @@ export default function Expenses() {
         );
     }
   };
+  function handleAcceptSettlement(ExpenseId: string): void {
+    throw new Error("Function not implemented.");
+  }
+
   // console.log("My expenses:", expenses)
   // console.log("original", expenses.toLocaleString)
 
@@ -328,6 +349,33 @@ export default function Expenses() {
                     </div>
                   );
                 })}
+
+                {/* Add accept and decline buttons for settlement */}
+                {settlementInfo[index] &&
+                  settlementInfo[index].ExpenseSplitId &&
+                  settlementInfo[index].SettlementStatus === "Pending" &&
+                  currentUser &&
+                  currentUser.UserId == expense.ExpenseMakerUserId && (
+                    <div>
+                      <button
+                        className="btn btn-success"
+                        onClick={() =>
+                          handleAcceptSettlement(expense.ExpenseId)
+                        }
+                      >
+                        Accept
+                      </button>
+                      <button
+                        className="btn btn-danger"
+                        onClick={() =>
+                          handleAcceptSettlement(expense.ExpenseId)
+                        }
+                      >
+                        Decline
+                      </button>
+                    </div>
+                  )}
+
                 {/* Add button to settle expense */}
                 {expenseSplit[index] &&
                   expenseSplit[index].some(
@@ -350,6 +398,7 @@ export default function Expenses() {
             </li>
           ))}
       </ul>
+
       {expenses.map((expense) => (
         <div
           key={expense.ExpenseId}

@@ -461,7 +461,6 @@ const insertExpenseIntoDatabase = async (
         const expenseId = result.recordset[0].ExpenseId;
 
         // Insert expense split into ExpenseSplit table
-        // Insert expense split into ExpenseSplit table
         const splitPromises = groupUsers.map(async (user) => {
           const percentage =
             customPercentages[user.UserId] || 100 / groupUsers.length;
@@ -1223,18 +1222,18 @@ const getExpenseSplitByUserIdAndExpenseIds = async (
         SELECT es.ExpenseId, es.Percentage, 
         ess.Status AS SettlementStatus,
         ess.Amount AS SettlementAmount,
+        ess.ExpenseSplitId,
         ess.SettlementDate
  FROM ExpenseSplit es
  INNER JOIN Expenses e ON es.ExpenseId = e.ExpenseId
  LEFT JOIN ExpenseSettlements ess ON es.ExpenseSplitId = ess.ExpenseSplitId
-                                     AND es.UserId = ess.PayeeUserId
- WHERE es.UserId = @userId AND es.ExpenseId IN (@expenseIds);
+ WHERE (es.UserId = @userId OR ess.PayeeUserId = @userId) AND es.ExpenseId IN (@expenseIds);
  
  
  
         `);
 
-      console.log(result.recordset);
+      console.log(result.recordset,userId);
       return result.recordset;
     })
     .catch((error) => {
@@ -1307,7 +1306,7 @@ const getExpenseSplitByUserIdAndExpenseIds = async (
 //     });
 // };
 
-// Handler for settling an expense
+// Handler for sending expense settlment request
 app.post(
   "/settleExpense",
   cors(),
@@ -1335,12 +1334,12 @@ app.post(
         INNER JOIN Expenses e ON es.ExpenseId = e.ExpenseId
         WHERE es.ExpenseId = @expenseId
           AND es.UserId = @payerUserId
-        
         `);
 
       if (splitResult.recordset.length === 0) {
         return res.status(404).send("Expense split not found");
       }
+
       console.log(splitResult);
 
       const expenseSplitId = splitResult.recordset[0].ExpenseSplitId;
@@ -1349,57 +1348,29 @@ app.post(
 
       // Calculate the amount for the expense split
       const splitAmount = (actualAmount * percentage) / 100;
-      // console.log("expense:",splitAmount,"amount sent:",amount,"full amount:",actualAmount, "percentage:",percentage)
+
       // Start a transaction
       const transaction = new sql.Transaction(pool);
       await transaction.begin();
 
       try {
-        // Check if settlement amount is less than or equal to split amount
-        if (amount <= splitAmount) {
-          // Deduct the settlement amount from the expense split based on the percentage
-          const deductionAmount = (amount * percentage) / 100;
-          const updateQuery = `
-      UPDATE ExpenseSplit
-      SET Amount = Amount - @deductionAmount
-      WHERE ExpenseSplitId = @expenseSplitId;
-  `;
-          const request = new sql.Request(transaction);
-          request.input("deductionAmount", sql.Decimal(10, 2), deductionAmount);
-          request.input("expenseSplitId", sql.Int, expenseSplitId);
-          await request.query(updateQuery);
+        // Insert a record into ExpenseSettlements table with status 'Pending'
+        const insertQuery = `
+          INSERT INTO ExpenseSettlements (ExpenseSplitId, PayerUserId, PayeeUserId, Amount, Status)
+          VALUES (@expenseSplitId, @payerUserId, @payeeUserId, @amount, 'Pending');
+        `;
+        const request = new sql.Request(transaction);
+        request.input("expenseSplitId", sql.Int, expenseSplitId);
+        request.input("payerUserId", sql.Int, payerUserId);
+        request.input("payeeUserId", sql.Int, payeeUserId);
+        request.input("amount", sql.Decimal(10, 2), amount);
+        await request.query(insertQuery);
 
-          // If settlement amount equals split amount, update status to 'Settled'
-          if (amount === splitAmount) {
-            const updateStatusQuery = `
-          UPDATE ExpenseSplit
-          SET Status = 'Settled'
-          WHERE ExpenseSplitId = @expenseSplitId;
-      `;
-            await request.query(updateStatusQuery);
-          }
+        // Commit the transaction
+        await transaction.commit();
 
-          // Insert a record into ExpenseSettlements table
-          const insertQuery = `
-      INSERT INTO ExpenseSettlements (ExpenseSplitId, PayerUserId, PayeeUserId, Amount, Status)
-      VALUES (@expenseSplitId, @payerUserId, @payeeUserId, @amount, 'Pending');
-  `;
-          request.input("payerUserId", sql.Int, payerUserId);
-          request.input("payeeUserId", sql.Int, payeeUserId);
-          request.input("amount", sql.Decimal(10, 2), amount);
-          await request.query(insertQuery);
-
-          // Commit the transaction
-          await transaction.commit();
-
-          // Send response
-          res.status(200).send("Expense settled successfully");
-        } else {
-          // Settlement amount exceeds split amount, return error
-          return res
-            .status(400)
-            .send("Settlement amount exceeds the expense split amount");
-        }
+        // Send response
+        res.status(200).send("Expense settlement request sent successfully");
       } catch (error) {
         // Rollback transaction on error
         await transaction.rollback();
@@ -1415,6 +1386,8 @@ app.post(
     }
   }
 );
+
+
 
 app.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);

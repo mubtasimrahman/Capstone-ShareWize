@@ -25,6 +25,7 @@ function MyGroups({ onGroupClick, userId }: MyGroupsProps) {
   const [groupRequests, setGroupRequests] = useState<GroupRequest[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [loadingAccept, setLoadingAccept] = useState(false); // Loading state for accepting requests
+  const [loadingDecline, setLoadingDecline] = useState(false); // Loading state for accepting requests
 
   useEffect(() => {
     // Fetch group requests data when component mounts
@@ -152,7 +153,7 @@ function MyGroups({ onGroupClick, userId }: MyGroupsProps) {
                       marginLeft: "5px",
                     }}
                     variant="contained"
-                    disabled={loadingAccept} // Disable button when loading
+                    disabled={loadingDecline} // Disable button when loading
                     onClick={() =>
                       respondToGroupMembershipRequest(
                         request.RequestId,
@@ -160,7 +161,7 @@ function MyGroups({ onGroupClick, userId }: MyGroupsProps) {
                       )
                     }
                   >
-                    {loadingAccept ? (
+                    {loadingDecline ? (
                       <CircularProgress size={24} color="inherit" />
                     ) : (
                       "Decline"

@@ -80,7 +80,7 @@ function GroupForm({ setGroupId, onNext, userId, onGroupNameChange }: GroupFormP
       <div className="container">
         <div className="section">
           <h2>Group Created Successfully</h2>
-          <span style={{ color: 'green', fontSize: 50 }}>✔️</span>
+          <span style={{ color: 'green', fontSize: 50 }}>✅</span>
         </div>
       </div>
     );

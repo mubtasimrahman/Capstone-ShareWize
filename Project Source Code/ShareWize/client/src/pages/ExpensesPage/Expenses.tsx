@@ -95,7 +95,6 @@ export default function Expenses() {
         {
           expenseId: selectedExpense?.ExpenseId,
           amount: settlementAmount,
-          // payeeEmail: email,
           payerUserId: currentUser?.UserId,
           payeeUserId: selectedUserId,
         },
@@ -125,6 +124,8 @@ export default function Expenses() {
         // Something happened in setting up the request that triggered an error
         console.error("Request setup error:", error.message);
       }
+    } finally {
+      setSelectedExpense(null); // Close the modal
     }
   };
 
@@ -250,9 +251,6 @@ export default function Expenses() {
         );
     }
   };
-  function handleAcceptSettlement(ExpenseId: string): void {
-    throw new Error("Function not implemented.");
-  }
 
   console.log("settlementInfo:", settlementInfo);
   console.log("currentUser:", currentUser);
@@ -260,6 +258,10 @@ export default function Expenses() {
     "Expense Maker User Ids:",
     expenses.map((expense) => expense.ExpenseMakerUserId)
   );
+
+  function handleAcceptSettlement(ExpenseId: string): void {
+    throw new Error("Function not implemented.");
+  }
 
   return (
     <div className="container-fluid expense-container">
@@ -400,7 +402,29 @@ export default function Expenses() {
                     className="btn btn-primary"
                     data-bs-toggle="modal"
                     data-bs-target={`#exampleModal-${expense.ExpenseId}`}
-                    onClick={() => setSelectedExpense(expense)}
+                    onClick={() => {
+                      setSelectedExpense(expense);
+                      setSettlementAmount(
+                        // Calculate the amount owed based on the percentage
+                        (expense.Amount *
+                          Number(
+                            expenseSplit
+                              .find((splitArray) =>
+                                splitArray.some(
+                                  (split) =>
+                                    split.ExpenseId === expense.ExpenseId
+                                )
+                              )
+                              ?.find(
+                                (split) =>
+                                  split.ExpenseId === expense.ExpenseId
+                              )?.Percentage
+                          )) /
+                          100
+                      );
+                      setEmail(expense.ExpenseMakerEmail);
+                      setSelectedUserId(expense.ExpenseMakerUserId);
+                    }}
                   >
                     Settle Expense
                   </button>
@@ -488,7 +512,7 @@ export default function Expenses() {
                   className="btn btn-primary"
                   onClick={handleSettleExpense}
                 >
-                  Save changes
+                  Send
                 </button>
               </div>
             </div>

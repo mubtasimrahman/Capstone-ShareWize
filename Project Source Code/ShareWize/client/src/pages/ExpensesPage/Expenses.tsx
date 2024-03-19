@@ -3,9 +3,9 @@ import axios from "axios";
 import { useSelector } from "react-redux";
 import { RootState } from "../../App/store/store";
 import "./Expenses.css";
-import { parseISO } from "date-fns";
 
 interface Expense {
+  ExpenseMakerUserId: number;
   ExpenseMakerDisplayName: string;
   ExpenseMakerEmail: string;
   ExpenseId: string;
@@ -15,6 +15,13 @@ interface Expense {
   GroupName: string;
   OtherMemberDisplayNames: string[];
   OtherMemberEmails: string[];
+  OtherMemberUserIds: number[];
+}
+interface SettlementInfo {
+  ExpenseId: string;
+  SettlementStatus: string;
+  SettlementAmount: number;
+  SettlementDate: Date;
 }
 
 interface UserObject {
@@ -40,19 +47,75 @@ export default function Expenses() {
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
   const [settlementAmount, setSettlementAmount] = useState<number>(0);
   const [email, setEmail] = useState<string>("");
+  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+  const [settlementInfo, setSettlementInfo] = useState<SettlementInfo[]>([]);
 
+  const generateUserListItems = (
+    userIds: number[],
+    displayNames: string[],
+    emails: string[],
+    currentUser: UserObject | undefined
+  ): JSX.Element[] => {
+    const userListItems: JSX.Element[] = [];
+
+    // Iterate through the user data arrays
+    for (let i = 0; i < displayNames.length; i++) {
+      const userId = userIds[i];
+      const displayName = displayNames[i];
+      const email = emails[i];
+      // Check if the current member is not the currently logged-in user and not the expense maker
+      if (
+        displayName !== currentUser?.DisplayName &&
+        email !== currentUser?.Email &&
+        userId !== currentUser?.UserId
+      ) {
+        userListItems.push(
+          <li key={userId}>
+            {displayName} - {email} -{userId}
+          </li>
+        );
+      }
+    }
+
+    return userListItems;
+  };
   const handleSettleExpense = async () => {
-    // Make API call to settle the expense
     try {
-      const response = await axios.post("http://localhost:8000/settleExpense", {
-        expenseId: selectedExpense?.ExpenseId,
-        amount: settlementAmount,
-        payeeEmail: email,
-      });
+      const response = await axios.post(
+        "http://localhost:8000/settleExpense",
+        {
+          expenseId: selectedExpense?.ExpenseId,
+          amount: settlementAmount,
+          // payeeEmail: email,
+          payerUserId: currentUser?.UserId,
+          payeeUserId: selectedUserId,
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
       // Handle success
       console.log("Expense settled successfully:", response.data);
-    } catch (error) {
-      console.error("Error settling expense:", error);
+    } catch (error: any) {
+      // Specify the type as 'any'
+      // Log detailed error information
+      console.error("Error settling expense:");
+
+      // Handle specific error scenarios
+      if (error.response) {
+        // The request was made and the server responded with a status code
+        console.error("Response status:", error.response.status);
+        console.error("Response data:", error.response.data);
+      } else if (error.request) {
+        // The request was made but no response was received
+        console.error("No response received:", error.request);
+      } else {
+        // Something happened in setting up the request that triggered an error
+        console.error("Request setup error:", error.message);
+      }
     }
   };
 
@@ -99,24 +162,46 @@ export default function Expenses() {
       // Batch expense split requests
       const batchSize = 12; // Define the batch size
       const expenseSplitData: ExpenseSplit[][] = [];
+      const settlementInfoData: SettlementInfo[] = [];
+
       for (let i = 0; i < formattedExpenses.length; i += batchSize) {
         const batch = formattedExpenses.slice(i, i + batchSize);
         const batchExpenseSplitPromises = batch.map((expense) =>
-          axios.get<ExpenseSplit[]>(
+          axios.get(
             `http://localhost:8000/users/${
               currentUser!.UserId
             }/expenseSplit?expenseIds=${expense.ExpenseId}`
           )
         );
+
         const batchExpenseSplitResponses = await Promise.all(
           batchExpenseSplitPromises
         );
         const batchExpenseSplitData = batchExpenseSplitResponses.map(
           (response) => response.data
         );
+
         expenseSplitData.push(...batchExpenseSplitData);
+
+        // Extract and store settlement info
+        batchExpenseSplitData.forEach((expenseSplit, index) => {
+          const settlement = expenseSplit.find(
+            (split: { SettlementStatus: null }) =>
+              split.SettlementStatus !== null
+          );
+          if (settlement) {
+            settlementInfoData.push({
+              ExpenseId: batch[index].ExpenseId,
+              SettlementStatus: settlement.SettlementStatus,
+              SettlementAmount: settlement.SettlementAmount,
+              SettlementDate: new Date(settlement.SettlementDate),
+            });
+          }
+        });
       }
+
       setExpenseSplit(expenseSplitData);
+      setSettlementInfo(settlementInfoData);
     } catch (error) {
       console.error("Error fetching expenses:", error);
     } finally {
@@ -202,34 +287,23 @@ export default function Expenses() {
                   Description: {expense.Description}
                 </p>
                 <ul>
-                  {/* Display Other Members */}
-                  {expense.OtherMemberDisplayNames.map((displayName, index) => {
-                    const email = expense.OtherMemberEmails[index];
-                    // Check if the current member is not the currently logged-in user
-                    if (
-                      displayName !== currentUser?.DisplayName &&
-                      email !== currentUser?.Email
-                    ) {
-                      return (
-                        <li key={index}>
-                          {displayName} - {email}
-                        </li>
-                      );
-                    }
-                    return null;
-                  })}
+                  {/* Display Other Members who are not logged in */}
+                  {generateUserListItems(
+                    expense.OtherMemberUserIds,
+                    expense.OtherMemberDisplayNames,
+                    expense.OtherMemberEmails,
+                    currentUser
+                  )}
 
-                  {/* Display Expense Maker */}
-                  {/* Check if the Expense Maker is not the currently logged-in user */}
-                  {expense.ExpenseMakerDisplayName !==
-                    currentUser?.DisplayName &&
-                    expense.ExpenseMakerEmail !== currentUser?.Email && (
-                      <li>
-                        {expense.ExpenseMakerDisplayName} -{" "}
-                        {expense.ExpenseMakerEmail}
-                      </li>
-                    )}
+                  {/* Displays expense maker if they are not logged in */}
+                  {generateUserListItems(
+                    [expense.ExpenseMakerUserId],
+                    [expense.ExpenseMakerDisplayName],
+                    [expense.ExpenseMakerEmail],
+                    currentUser
+                  )}
                 </ul>
+
                 <p className="expense-amount">Amount: ${expense.Amount}</p>
                 <p className="expense-group">Group: {expense.GroupName}</p>
                 <p className="expense-date">
@@ -259,7 +333,10 @@ export default function Expenses() {
                   expenseSplit[index].some(
                     (split) =>
                       (expense.Amount * Number(split.Percentage)) / 100 > 0
-                  ) && (
+                  ) &&
+                  // Conditionally render the "Settle Expense" button
+                  (!currentUser ||
+                  currentUser.UserId !== expense.ExpenseMakerUserId ? (
                     <button
                       className="btn btn-primary"
                       data-bs-toggle="modal"
@@ -268,7 +345,7 @@ export default function Expenses() {
                     >
                       Settle Expense
                     </button>
-                  )}
+                  ) : null)}
               </div>
             </li>
           ))}
@@ -296,19 +373,32 @@ export default function Expenses() {
                 ></button>
               </div>
               <div className="modal-body">
-                {/* Input fields for email and settlement amount */}
+                {/* Dropdown for selecting email */}
                 <div className="mb-3">
                   <label htmlFor="inputEmail" className="form-label">
                     Email
                   </label>
-                  <input
-                    type="email"
-                    className="form-control"
+                  <select
+                    className="form-select"
                     id="inputEmail"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                  />
+                    onChange={(e) => {
+                      const selectedEmail = e.target.value;
+                      setEmail(selectedEmail);
+
+                      // Set the selected user ID to the expense maker's ID
+                      setSelectedUserId(expense.ExpenseMakerUserId);
+                    }}
+                  >
+                    {/* Placeholder option */}
+                    <option value="">Select an email</option>
+                    {/* Add option for the expense maker's email */}
+                    <option value={expense.ExpenseMakerEmail}>
+                      {expense.ExpenseMakerEmail}
+                    </option>
+                  </select>
                 </div>
+
                 <div className="mb-3">
                   <label htmlFor="inputAmount" className="form-label">
                     Settlement Amount

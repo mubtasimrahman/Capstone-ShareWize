@@ -11,6 +11,10 @@ import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
 import CircularProgress from '@mui/material/CircularProgress';
+import rbcLogo from './rbc.png';
+import cibcLogo from './cibc.png';
+import scotiabankLogo from './scotiabank.png';
+import tdLogo from './td.png';
 
 interface Expense {
   ExpenseMakerUserId: number;
@@ -466,6 +470,20 @@ export default function Expenses() {
                   />
                 </div>
               </div>
+              <div className="mb-3 image-container">
+              <a href="https://www.rbc.com" target="_blank" rel="noopener noreferrer">
+                <img src={rbcLogo} alt="rbc" className="modal-image" />
+              </a>
+              <a href="https://www.cibc.com" target="_blank" rel="noopener noreferrer">
+                <img src={cibcLogo} alt="cibc" className="modal-image" />
+              </a>
+              <a href="https://www.scotiabank.com" target="_blank" rel="noopener noreferrer">
+                <img src={scotiabankLogo} alt="scotiabank" className="modal-image" />
+              </a>
+              <a href="https://www.td.com" target="_blank" rel="noopener noreferrer">
+                <img src={tdLogo} alt="td" className="modal-image" />
+              </a>
+              </div>
               <div className="modal-footer">
                 <button
                   type="button"
@@ -485,7 +503,7 @@ export default function Expenses() {
                   {loadingSettlement ? (
                     <CircularProgress size={24} color="inherit" />
                   ) : (
-                    "Send"
+                    "Confirm Payment"
                   )}
                 </button>
               </div>

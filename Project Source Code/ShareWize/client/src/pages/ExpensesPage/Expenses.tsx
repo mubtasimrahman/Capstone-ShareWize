@@ -10,6 +10,7 @@ import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
+import CircularProgress from '@mui/material/CircularProgress';
 
 interface Expense {
   ExpenseMakerUserId: number;
@@ -30,7 +31,7 @@ interface SettlementInfo {
   SettlementStatus: string;
   SettlementAmount: number;
   SettlementDate: Date;
-  ExpenseMakerUserId: number; // Add ExpenseMakerUserId to the interface
+  ExpenseMakerUserId: number;
 }
 
 interface UserObject {
@@ -58,6 +59,8 @@ export default function Expenses() {
   const [email, setEmail] = useState<string>("");
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [settlementInfo, setSettlementInfo] = useState<SettlementInfo[]>([]);
+  const [loadingSettlement, setLoadingSettlement] = useState<boolean>(false);
+  const [settlementSuccess, setSettlementSuccess] = useState<boolean>(false); // New state for settlement success
 
   const generateUserListItems = (
     userIds: number[],
@@ -67,12 +70,11 @@ export default function Expenses() {
   ): JSX.Element[] => {
     const userListItems: JSX.Element[] = [];
 
-    // Iterate through the user data arrays
     for (let i = 0; i < displayNames.length; i++) {
       const userId = userIds[i];
       const displayName = displayNames[i];
       const email = emails[i];
-      // Check if the current member is not the currently logged-in user and not the expense maker
+
       if (
         displayName !== currentUser?.DisplayName &&
         email !== currentUser?.Email &&
@@ -88,8 +90,11 @@ export default function Expenses() {
 
     return userListItems;
   };
+
   const handleSettleExpense = async () => {
     try {
+      setLoadingSettlement(true);
+
       const response = await axios.post(
         "http://localhost:8000/settleExpense",
         {
@@ -105,27 +110,20 @@ export default function Expenses() {
         }
       );
 
-      // Handle success
       console.log("Expense settled successfully:", response.data);
-    } catch (error: any) {
-      // Specify the type as 'any'
-      // Log detailed error information
-      console.error("Error settling expense:");
 
-      // Handle specific error scenarios
-      if (error.response) {
-        // The request was made and the server responded with a status code
-        console.error("Response status:", error.response.status);
-        console.error("Response data:", error.response.data);
-      } else if (error.request) {
-        // The request was made but no response was received
-        console.error("No response received:", error.request);
-      } else {
-        // Something happened in setting up the request that triggered an error
-        console.error("Request setup error:", error.message);
-      }
+      // Set settlement success to true
+      setSettlementSuccess(true);
+
+      setTimeout(() => {
+        setSelectedExpense(null); // Close the modal
+        setSettlementSuccess(false); // Reset settlement success state
+      }, 1000);
+    } catch (error: any) {
+      console.error("Error settling expense:", error);
     } finally {
-      setSelectedExpense(null); // Close the modal
+      setLoadingSettlement(false);
+      setSelectedExpense(null);
     }
   };
 
@@ -160,17 +158,14 @@ export default function Expenses() {
       const response = await axios.get<Expense[]>(
         `http://localhost:8000/users/${currentUser!.UserId}/expenses`
       );
-      console.log(response);
       const formattedExpenses = response.data.map((expense) => ({
         ...expense,
-        DatePaid: new Date(expense.DatePaid), // Assuming server sends UTC dates
+        DatePaid: new Date(expense.DatePaid),
       }));
-      console.log(formattedExpenses);
 
       setExpenses(formattedExpenses);
 
-      // Batch expense split requests
-      const batchSize = 12; // Define the batch size
+      const batchSize = 12;
       const expenseSplitData: ExpenseSplit[][] = [];
       const settlementInfoData: SettlementInfo[] = [];
 
@@ -190,8 +185,7 @@ export default function Expenses() {
         const batchExpenseSplitData = batchExpenseSplitResponses.map(
           (response) => response.data
         );
-        console.log(batchExpenseSplitData);
-        // Include ExpenseMakerUserId in each expenseSplit object
+
         const expenseSplitWithMakerId = batchExpenseSplitData.map(
           (expenseSplit, index) =>
             expenseSplit.map((split: any) => ({
@@ -202,7 +196,6 @@ export default function Expenses() {
 
         expenseSplitData.push(...expenseSplitWithMakerId);
 
-        // Extract and store settlement info
         batchExpenseSplitData.forEach((expenseSplit, index) => {
           const settlement = expenseSplit.find(
             (split: { SettlementStatus: null }) =>
@@ -221,8 +214,6 @@ export default function Expenses() {
         });
       }
 
-      // console.log(expenseSplitData);
-      // console.log(settlementInfoData);
       setExpenseSplit(expenseSplitData);
       setSettlementInfo(settlementInfoData);
     } catch (error) {
@@ -251,13 +242,6 @@ export default function Expenses() {
         );
     }
   };
-
-  console.log("settlementInfo:", settlementInfo);
-  console.log("currentUser:", currentUser);
-  console.log(
-    "Expense Maker User Ids:",
-    expenses.map((expense) => expense.ExpenseMakerUserId)
-  );
 
   function handleAcceptSettlement(ExpenseId: string): void {
     throw new Error("Function not implemented.");
@@ -319,15 +303,12 @@ export default function Expenses() {
                   Description: {expense.Description}
                 </p>
                 <ul>
-                  {/* Display Other Members who are not logged in */}
                   {generateUserListItems(
                     expense.OtherMemberUserIds,
                     expense.OtherMemberDisplayNames,
                     expense.OtherMemberEmails,
                     currentUser
                   )}
-
-                  {/* Displays expense maker if they are not logged in */}
                   {generateUserListItems(
                     [expense.ExpenseMakerUserId],
                     [expense.ExpenseMakerDisplayName],
@@ -335,16 +316,14 @@ export default function Expenses() {
                     currentUser
                   )}
                 </ul>
-
                 <p className="expense-amount">Amount: ${expense.Amount}</p>
                 <p className="expense-group">Group: {expense.GroupName}</p>
                 <p className="expense-date">
                   Date Made:{" "}
                   {new Date(expense.DatePaid).toLocaleDateString(undefined, {
-                    timeZone: "UTC", // Adjust to your desired timezone
+                    timeZone: "UTC",
                   })}
                 </p>
-                {/* Display expense split information */}
                 {expenseSplit
                   .find((splitArray) =>
                     splitArray.some(
@@ -352,7 +331,6 @@ export default function Expenses() {
                     )
                   )
                   ?.map((split, idx) => {
-                    // Calculate the amount owed based on the percentage
                     const amountOwed =
                       (expense.Amount * Number(split.Percentage)) / 100;
                     return (
@@ -366,8 +344,6 @@ export default function Expenses() {
                       </div>
                     );
                   })}
-
-                {/* Add accept and decline buttons for settlement */}
                 {settlementInfo
                   .filter((info) => info.ExpenseId === expense.ExpenseId)
                   .map((info, idx) =>
@@ -394,8 +370,6 @@ export default function Expenses() {
                       </div>
                     ) : null
                   )}
-
-                {/* Add button to settle expense */}
                 {!currentUser ||
                 currentUser.UserId !== expense.ExpenseMakerUserId ? (
                   <button
@@ -405,7 +379,6 @@ export default function Expenses() {
                     onClick={() => {
                       setSelectedExpense(expense);
                       setSettlementAmount(
-                        // Calculate the amount owed based on the percentage
                         (expense.Amount *
                           Number(
                             expenseSplit
@@ -457,7 +430,6 @@ export default function Expenses() {
                 ></button>
               </div>
               <div className="modal-body">
-                {/* Dropdown for selecting email */}
                 <div className="mb-3">
                   <label htmlFor="inputEmail" className="form-label">
                     Email
@@ -469,14 +441,10 @@ export default function Expenses() {
                     onChange={(e) => {
                       const selectedEmail = e.target.value;
                       setEmail(selectedEmail);
-
-                      // Set the selected user ID to the expense maker's ID
                       setSelectedUserId(expense.ExpenseMakerUserId);
                     }}
                   >
-                    {/* Placeholder option */}
                     <option value="">Select an email</option>
-                    {/* Add option for the expense maker's email */}
                     <option value={expense.ExpenseMakerEmail}>
                       {expense.ExpenseMakerEmail}
                     </option>
@@ -511,8 +479,14 @@ export default function Expenses() {
                   type="button"
                   className="btn btn-primary"
                   onClick={handleSettleExpense}
+                  data-bs-dismiss="modal"
+                  disabled={loadingSettlement}
                 >
-                  Send
+                  {loadingSettlement ? (
+                    <CircularProgress size={24} color="inherit" />
+                  ) : (
+                    "Send"
+                  )}
                 </button>
               </div>
             </div>

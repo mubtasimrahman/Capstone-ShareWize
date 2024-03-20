@@ -86,7 +86,7 @@ export default function Expenses() {
       ) {
         userListItems.push(
           <li key={userId}>
-            {displayName} - {email} -{userId}
+            {displayName} 
           </li>
         );
       }

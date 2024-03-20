@@ -69,6 +69,10 @@ function UserForm({ groupId, userId }: UserFormProps) {
     }
   };
 
+  const handleRefreshGroupUsers = () => {
+    fetchGroupUsers();
+  };
+
   return (
     <div className="container-user">
       <div className="section">
@@ -98,14 +102,21 @@ function UserForm({ groupId, userId }: UserFormProps) {
           )}
         </Button>
       </div>
-      <div className="section">
+      {/* <div className="section">
         <h2>Group Users</h2>
-        <ul>
+        <div>
           {groupUsers.map((user) => (
-            <li key={user.UserId}>{user.Email}</li>
+            <div key={user.UserId}>{user.Email}</div>
           ))}
-        </ul>
-      </div>
+        </div>
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={handleRefreshGroupUsers}
+        >
+          Refresh
+        </Button>
+      </div> */}
     </div>
   );
 }

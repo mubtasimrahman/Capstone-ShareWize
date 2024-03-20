@@ -20,6 +20,7 @@ interface Expense {
 
 interface User {
   UserId: number;
+  DisplayName: string;
   Email: string;
 }
 
@@ -35,25 +36,27 @@ function ExpenseForm({ groupId, userId }: ExpenseFormProps) {
 
   // Function to fetch and update group users
   const fetchGroupUsers = () => {
-    axios
-      .get(`http://localhost:8000/groups/${groupId}/users`)
-      .then((response) => {
-        setGroupUsers(response.data);
-      })
-      .catch((error) => {
-        console.error("Error fetching group users:", error);
-      });
+    if (groupId) {
+      axios
+        .get(`http://localhost:8000/groups/${groupId}/users`)
+        .then((response) => {
+          setGroupUsers(response.data);
+        })
+        .catch((error) => {
+          console.error("Error fetching group users:", error);
+        });
+    }
   };
 
   useEffect(() => {
     if (groupId) {
-      fetchGroupUsers(); // Fetch group users when groupId changes
+      fetchExpenses(groupId); // Fetch group expenses when groupId changes
     }
   }, [groupId]);
 
   useEffect(() => {
     if (groupId) {
-      fetchExpenses(groupId);
+      fetchGroupUsers(); // Fetch group users when groupId changes
     }
   }, [groupId]);
 
@@ -70,6 +73,9 @@ function ExpenseForm({ groupId, userId }: ExpenseFormProps) {
 
   const handleCustomize = () => {
     setCustomizing(!customizing);
+    if (!customizing) {
+      fetchGroupUsers(); // Fetch group users when "Show Members" button is clicked
+    }
   };
 
   const handleCustomPercentChange = (userId: number, value: string) => {
@@ -78,6 +84,7 @@ function ExpenseForm({ groupId, userId }: ExpenseFormProps) {
       [userId]: parseFloat(value),
     });
   };
+
   const addExpense = (
     description: string,
     amount: number,
@@ -167,13 +174,13 @@ function ExpenseForm({ groupId, userId }: ExpenseFormProps) {
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
         />
-        <div style={{alignItems: "center", justifyContent:"flex-end"}}>
+        <div style={{ alignItems: "center", justifyContent: "flex-end" }}>
           <Button
-            style={{ backgroundColor: "#198754", marginRight:"10px" }}
+            style={{ backgroundColor: "#198754", marginRight: "10px" }}
             variant="contained"
             onClick={handleCustomize}
           >
-            Customize Split
+            {customizing ? "Hide Members" : "Show Members"}
           </Button>
           <Button
             style={{ backgroundColor: "#198754" }}
@@ -185,10 +192,10 @@ function ExpenseForm({ groupId, userId }: ExpenseFormProps) {
         </div>
         {customizing && (
           <div className="section">
-            <h2>Customize Expense Split</h2>
+            <h2>Members and Expense Split</h2>
             {groupUsers.map((user) => (
               <div key={user.UserId}>
-                <p>{user.Email}</p>
+                <p>{user.DisplayName}</p>
                 <input
                   type="text"
                   placeholder="Percentage"

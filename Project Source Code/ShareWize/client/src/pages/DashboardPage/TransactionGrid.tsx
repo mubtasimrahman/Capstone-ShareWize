@@ -127,7 +127,6 @@ export default function Expenses() {
 
   return (
     <div className="container-fluid expense-container">
-      <h2 className="text-white">Expenses</h2>
       <div className="d-flex flex-row mb-3">
         <div className="dropdown">
           <button

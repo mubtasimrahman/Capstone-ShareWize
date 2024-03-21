@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import axios from "axios";
 import { useSelector } from "react-redux";
 import Button from "@mui/material/Button";
@@ -9,26 +9,30 @@ interface Group {
   GroupId: number;
   GroupName: string;
 }
+
+// Define an interface for the group request object
 interface GroupRequest {
   RequestId: number;
   GroupId: number;
   GroupName: string;
 }
 
+// Define props interface for MyGroups component
 interface MyGroupsProps {
   onGroupClick: (group: Group) => void; // Callback function to handle group click
   userId: number;
 }
 
+// MyGroups component
 function MyGroups({ onGroupClick, userId }: MyGroupsProps) {
   const googleId = useSelector((state: any) => state.auth.user?.sub);
   const [groupRequests, setGroupRequests] = useState<GroupRequest[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [loadingAccept, setLoadingAccept] = useState(false); // Loading state for accepting requests
-  const [loadingDecline, setLoadingDecline] = useState(false); // Loading state for accepting requests
+  const [loadingDecline, setLoadingDecline] = useState(false); // Loading state for declining requests
 
+  // Fetch group requests data when component mounts or userId changes
   useEffect(() => {
-    // Fetch group requests data when component mounts
     if (userId) {
       axios
         .get("http://localhost:8000/groupRequests", {
@@ -47,8 +51,8 @@ function MyGroups({ onGroupClick, userId }: MyGroupsProps) {
     }
   }, [userId]);
 
+  // Fetch groups data when component mounts or googleId changes
   useEffect(() => {
-    // Fetch groups data when component mounts
     if (googleId) {
       axios
         .get("http://localhost:8000/myGroups", {
@@ -67,6 +71,7 @@ function MyGroups({ onGroupClick, userId }: MyGroupsProps) {
     }
   }, [googleId]);
 
+  // Function to respond to group membership request
   const respondToGroupMembershipRequest = async (
     requestId: number,
     response: string
@@ -91,7 +96,7 @@ function MyGroups({ onGroupClick, userId }: MyGroupsProps) {
         prevRequests.filter((request) => request.RequestId !== requestId)
       );
 
-      // Fetch updated groups after accepting the request
+      // Fetch updated groups after responding to the request
       if (googleId) {
         const response = await axios.get("http://localhost:8000/myGroups", {
           params: {
@@ -109,6 +114,7 @@ function MyGroups({ onGroupClick, userId }: MyGroupsProps) {
     }
   };
 
+  // Event handler for handling group click
   const handleGroupClick = (group: Group) => {
     // Call the callback function with the selected group
     onGroupClick(group);
@@ -125,6 +131,7 @@ function MyGroups({ onGroupClick, userId }: MyGroupsProps) {
               <div key={request.RequestId} className="request-container">
                 <div>{request.GroupName}</div>
                 <div className="button-container">
+                  {/* Button to accept group membership request */}
                   <Button
                     style={{
                       backgroundColor: "#198754",
@@ -146,6 +153,7 @@ function MyGroups({ onGroupClick, userId }: MyGroupsProps) {
                       "Accept"
                     )}
                   </Button>
+                  {/* Button to decline group membership request */}
                   <Button
                     style={{
                       backgroundColor: "#DC3545",
@@ -179,6 +187,7 @@ function MyGroups({ onGroupClick, userId }: MyGroupsProps) {
           <div>
             {groups.map((group) => (
               <div key={group.GroupId} style={{ marginBottom: "10px" }}>
+                {/* Button to display group name */}
                 <Button
                   style={{
                     backgroundColor: "#198754",

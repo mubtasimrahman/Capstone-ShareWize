@@ -37,9 +37,3 @@ If you are developing a production application, we recommend updating the config
 - Video: https://www.google.com/url?sa=t&rct=j&q=&esrc=s&source=web&cd=&cad=rja&uact=8&ved=2ahUKEwjmtZXvj9uCAxWwHDQIHbcqCcIQwqsBegQICBAG&url=https%3A%2F%2Fm.youtube.com%2Fwatch%3Fv%3D-JJFQ9bkUbo%26pp%3DygUNI3Rva2VucmVmcmVzaA%253D%253D&usg=AOvVaw1lzrNCimOLszl9g-2yF5Ok&opi=89978449
 - Another Instructions: https://developer.okta.com/blog/2022/08/29/react-typescript-redux
 
-
-## New branch
-
-- git checkout -b <branch-name>
-- git push origin <branch-name> 
-      - this will push your existing branch to the new branch

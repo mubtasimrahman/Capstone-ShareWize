@@ -1,26 +1,31 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import axios from "axios";
 import "./UserForm.css";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
 
+// Define props interface for UserForm component
 interface UserFormProps {
   groupId: number | null;
   userId: number | null;
 }
 
+// Define interface for User object
 interface User {
   UserId: number;
   Email: string;
 }
 
+// UserForm component
 function UserForm({ groupId, userId }: UserFormProps) {
+  // State variables
   const [userEmail, setUserEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState(false);
   const [groupUsers, setGroupUsers] = useState<User[]>([]);
 
+  // Function to fetch group users
   const fetchGroupUsers = () => {
     if (groupId) {
       axios
@@ -34,10 +39,12 @@ function UserForm({ groupId, userId }: UserFormProps) {
     }
   };
 
+  // Fetch group users on component mount or groupId change
   useEffect(() => {
     fetchGroupUsers();
   }, [groupId]); // Fetch group users when groupId changes
 
+  // Function to send group membership request
   const sendGroupMembershipRequest = async () => {
     setLoading(true);
     try {
@@ -69,14 +76,11 @@ function UserForm({ groupId, userId }: UserFormProps) {
     }
   };
 
-  const handleRefreshGroupUsers = () => {
-    fetchGroupUsers();
-  };
-
   return (
     <div className="container-user">
       <div className="section">
         <h2>Add User to Group</h2>
+        {/* Input field for user email */}
         <input
           className="input"
           type="text"
@@ -84,6 +88,7 @@ function UserForm({ groupId, userId }: UserFormProps) {
           value={userEmail}
           onChange={(e) => setUserEmail(e.target.value)}
         />
+        {/* Button to send group membership request */}
         <Button
           style={{ backgroundColor: "#198754" }}
           variant="contained"
@@ -91,6 +96,7 @@ function UserForm({ groupId, userId }: UserFormProps) {
           onClick={sendGroupMembershipRequest}
           disabled={loading}
         >
+          {/* Display different text based on loading, success, or error state */}
           {loading ? (
             <CircularProgress color="inherit" size={24} />
           ) : success ? (
@@ -102,6 +108,7 @@ function UserForm({ groupId, userId }: UserFormProps) {
           )}
         </Button>
       </div>
+      {/* Section to display group users (commented out) */}
       {/* <div className="section">
         <h2>Group Users</h2>
         <div>

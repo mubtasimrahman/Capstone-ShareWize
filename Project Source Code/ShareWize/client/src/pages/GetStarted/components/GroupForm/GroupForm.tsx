@@ -4,6 +4,7 @@ import "./GroupForm.css";
 import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 
+// Define props interface for GroupForm component
 interface GroupFormProps {
   setGroupId: React.Dispatch<React.SetStateAction<number | null>>;
   onNext: () => void; // Callback function to switch to the next form
@@ -11,12 +12,15 @@ interface GroupFormProps {
   onGroupNameChange: (name: string) => void; // Add a callback for handling groupName change
 }
 
+// GroupForm component
 function GroupForm({ setGroupId, onNext, userId, onGroupNameChange }: GroupFormProps) {
+  // State variables
   const [groupName, setGroupName] = useState("");
   const [loading, setLoading] = useState(false);
   const [groupCreated, setGroupCreated] = useState(false); // Track if the group is created
   const [groupFailed, setGroupFailed] = useState(false); // Track if the group creation failed
 
+  // Function to handle group creation
   const handleCreateGroup = async () => {
     setLoading(true); // Set loading state to true when group creation starts
     try {
@@ -32,17 +36,16 @@ function GroupForm({ setGroupId, onNext, userId, onGroupNameChange }: GroupFormP
           },
         }
       );
-  
+
       console.log("Group creation response:", response);
-  
+
       if (response.data) {
         const groupId = response.data.groupID;
         setGroupId(groupId);
         setGroupCreated(true);
         onGroupNameChange(groupName); // Pass groupName back to parent
         onNext();
-        console.log(groupId);
-  
+
         axios
           .post(
             `http://localhost:8000/addUserToGroup`,
@@ -74,8 +77,9 @@ function GroupForm({ setGroupId, onNext, userId, onGroupNameChange }: GroupFormP
     }
   };
 
+  // Hide the success check mark after 3 seconds
   if (groupCreated) {
-    setTimeout(() => setGroupCreated(false), 3000); // Hide the success check mark after 3 seconds
+    setTimeout(() => setGroupCreated(false), 3000);
     return (
       <div className="container">
         <div className="section">
@@ -86,8 +90,9 @@ function GroupForm({ setGroupId, onNext, userId, onGroupNameChange }: GroupFormP
     );
   }
 
+  // Hide the X mark after 3 seconds
   if (groupFailed) {
-    setTimeout(() => setGroupFailed(false), 3000); // Hide the X mark after 3 seconds
+    setTimeout(() => setGroupFailed(false), 3000);
     return (
       <div className="container">
         <div className="section">
@@ -98,6 +103,7 @@ function GroupForm({ setGroupId, onNext, userId, onGroupNameChange }: GroupFormP
     );
   }
 
+  // Render the form to create a new group
   return (
     <div className="container">
       <div className="section">

@@ -190,7 +190,7 @@ export default function Expenses() {
   )}
   {!loading &&
     expenses.length > 0 &&
-    sortExpenses(expenses).map((expense, index) => (
+    sortExpenses(expenses).map((expense) => (
       <TableRow key={expense.ExpenseId}>
         <TableCell>{expense.Description}</TableCell>
         <TableCell>${expense.Amount}</TableCell>

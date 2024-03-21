@@ -1,15 +1,8 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import axios from "axios";
 import { useSelector } from "react-redux";
 import { RootState } from "../../App/store/store";
 import "./Expenses.css";
-import Table from '@mui/material/Table';
-import TableBody from '@mui/material/TableBody';
-import TableCell from '@mui/material/TableCell';
-import TableContainer from '@mui/material/TableContainer';
-import TableHead from '@mui/material/TableHead';
-import TableRow from '@mui/material/TableRow';
-import Paper from '@mui/material/Paper';
 import CircularProgress from '@mui/material/CircularProgress';
 import rbcLogo from './rbc.png';
 import cibcLogo from './cibc.png';
@@ -247,9 +240,24 @@ export default function Expenses() {
     }
   };
 
-  function handleAcceptSettlement(ExpenseId: string): void {
-    throw new Error("Function not implemented.");
+const handleAcceptSettlement = async (expenseId: string): Promise<void> => {
+  try {
+    // Update the settlement info or any relevant data structure to mark the settlement as accepted
+    // For example, you can update the settlement status to "Settled"
+    // This would typically involve making an API call to update the settlement status in your backend
+    // Here, I'll demonstrate a simple local update assuming you have a state named `settlementInfo`
+    const updatedSettlementInfo = settlementInfo.map(info =>
+      info.ExpenseId === expenseId && info.SettlementStatus === "Pending"
+        ? { ...info, SettlementStatus: "Settled" }
+        : info
+    );
+
+    // Update the state with the modified settlement info
+    setSettlementInfo(updatedSettlementInfo);
+  } catch (error) {
+    console.error("Error accepting settlement:", error);
   }
+};
 
   return (
     <div className="container-fluid expense-container">

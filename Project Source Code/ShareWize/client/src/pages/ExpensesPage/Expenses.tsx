@@ -1,22 +1,34 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import axios from "axios";
 import { useSelector } from "react-redux";
 import { RootState } from "../../App/store/store";
 import "./Expenses.css";
-import Table from '@mui/material/Table';
-import TableBody from '@mui/material/TableBody';
-import TableCell from '@mui/material/TableCell';
-import TableContainer from '@mui/material/TableContainer';
-import TableHead from '@mui/material/TableHead';
-import TableRow from '@mui/material/TableRow';
-import Paper from '@mui/material/Paper';
+import CircularProgress from '@mui/material/CircularProgress';
+import rbcLogo from './rbc.png';
+import cibcLogo from './cibc.png';
+import scotiabankLogo from './scotiabank.png';
+import tdLogo from './td.png';
 
 interface Expense {
+  ExpenseMakerUserId: number;
+  ExpenseMakerDisplayName: string;
+  ExpenseMakerEmail: string;
   ExpenseId: string;
   Description: string;
   Amount: number;
   DatePaid: Date;
   GroupName: string;
+  OtherMemberDisplayNames: string[];
+  OtherMemberEmails: string[];
+  OtherMemberUserIds: number[];
+}
+interface SettlementInfo {
+  ExpenseId: string;
+  ExpenseSplitId: string;
+  SettlementStatus: string;
+  SettlementAmount: number;
+  SettlementDate: Date;
+  ExpenseMakerUserId: number;
 }
 
 interface UserObject {
@@ -39,6 +51,78 @@ export default function Expenses() {
   const [loading, setLoading] = useState<boolean>(false);
   const [fetchAttempted, setFetchAttempted] = useState<boolean>(false);
   const [sortBy, setSortBy] = useState<string>("Date");
+  const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
+  const [settlementAmount, setSettlementAmount] = useState<number>(0);
+  const [email, setEmail] = useState<string>("");
+  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+  const [settlementInfo, setSettlementInfo] = useState<SettlementInfo[]>([]);
+  const [loadingSettlement, setLoadingSettlement] = useState<boolean>(false);
+  const [settlementSuccess, setSettlementSuccess] = useState<boolean>(false); // New state for settlement success
+
+  const generateUserListItems = (
+    userIds: number[],
+    displayNames: string[],
+    emails: string[],
+    currentUser: UserObject | undefined
+  ): JSX.Element[] => {
+    const userListItems: JSX.Element[] = [];
+
+    for (let i = 0; i < displayNames.length; i++) {
+      const userId = userIds[i];
+      const displayName = displayNames[i];
+      const email = emails[i];
+
+      if (
+        displayName !== currentUser?.DisplayName &&
+        email !== currentUser?.Email &&
+        userId !== currentUser?.UserId
+      ) {
+        userListItems.push(
+          <li key={userId}>
+            {displayName} 
+          </li>
+        );
+      }
+    }
+
+    return userListItems;
+  };
+
+  const handleSettleExpense = async () => {
+    try {
+      setLoadingSettlement(true);
+
+      const response = await axios.post(
+        "http://localhost:8000/settleExpense",
+        {
+          expenseId: selectedExpense?.ExpenseId,
+          amount: settlementAmount,
+          payerUserId: currentUser?.UserId,
+          payeeUserId: selectedUserId,
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      console.log("Expense settled successfully:", response.data);
+
+      // Set settlement success to true
+      setSettlementSuccess(true);
+
+      setTimeout(() => {
+        setSelectedExpense(null); // Close the modal
+        setSettlementSuccess(false); // Reset settlement success state
+      }, 1000);
+    } catch (error: any) {
+      console.error("Error settling expense:", error);
+    } finally {
+      setLoadingSettlement(false);
+      setSelectedExpense(null);
+    }
+  };
 
   const fetchUser = async () => {
     try {
@@ -75,29 +159,60 @@ export default function Expenses() {
         ...expense,
         DatePaid: new Date(expense.DatePaid),
       }));
+
       setExpenses(formattedExpenses);
 
-      // Batch expense split requests
-      const batchSize = 12; // Define the batch size
+      const batchSize = 12;
       const expenseSplitData: ExpenseSplit[][] = [];
+      const settlementInfoData: SettlementInfo[] = [];
+
       for (let i = 0; i < formattedExpenses.length; i += batchSize) {
         const batch = formattedExpenses.slice(i, i + batchSize);
         const batchExpenseSplitPromises = batch.map((expense) =>
-          axios.get<ExpenseSplit[]>(
+          axios.get(
             `http://localhost:8000/users/${
               currentUser!.UserId
             }/expenseSplit?expenseIds=${expense.ExpenseId}`
           )
         );
+
         const batchExpenseSplitResponses = await Promise.all(
           batchExpenseSplitPromises
         );
         const batchExpenseSplitData = batchExpenseSplitResponses.map(
           (response) => response.data
         );
-        expenseSplitData.push(...batchExpenseSplitData);
+
+        const expenseSplitWithMakerId = batchExpenseSplitData.map(
+          (expenseSplit, index) =>
+            expenseSplit.map((split: any) => ({
+              ...split,
+              ExpenseMakerUserId: batch[index].ExpenseMakerUserId,
+            }))
+        );
+
+        expenseSplitData.push(...expenseSplitWithMakerId);
+
+        batchExpenseSplitData.forEach((expenseSplit, index) => {
+          const settlement = expenseSplit.find(
+            (split: { SettlementStatus: null }) =>
+              split.SettlementStatus !== null
+          );
+          if (settlement) {
+            settlementInfoData.push({
+              ExpenseId: batch[index].ExpenseId,
+              ExpenseSplitId: settlement.ExpenseSplitId,
+              SettlementStatus: settlement.SettlementStatus,
+              SettlementAmount: settlement.SettlementAmount,
+              SettlementDate: new Date(settlement.SettlementDate),
+              ExpenseMakerUserId: batch[index].ExpenseMakerUserId,
+            });
+          }
+        });
       }
+
       setExpenseSplit(expenseSplitData);
+      setSettlementInfo(settlementInfoData);
     } catch (error) {
       console.error("Error fetching expenses:", error);
     } finally {
@@ -124,6 +239,25 @@ export default function Expenses() {
         );
     }
   };
+
+const handleAcceptSettlement = async (expenseId: string): Promise<void> => {
+  try {
+    // Update the settlement info or any relevant data structure to mark the settlement as accepted
+    // For example, you can update the settlement status to "Settled"
+    // This would typically involve making an API call to update the settlement status in your backend
+    // Here, I'll demonstrate a simple local update assuming you have a state named `settlementInfo`
+    const updatedSettlementInfo = settlementInfo.map(info =>
+      info.ExpenseId === expenseId && info.SettlementStatus === "Pending"
+        ? { ...info, SettlementStatus: "Settled" }
+        : info
+    );
+
+    // Update the state with the modified settlement info
+    setSettlementInfo(updatedSettlementInfo);
+  } catch (error) {
+    console.error("Error accepting settlement:", error);
+  }
+};
 
   return (
     <div className="container-fluid expense-container">
@@ -167,62 +301,224 @@ export default function Expenses() {
           </div>
         </div>
       </div>
-      <TableContainer component={Paper}>
-      <Table size="small">
-        <TableHead style={{ backgroundColor: '#198754', height: "75px"}}>
-          <TableRow>
-            <TableCell style={{color: "white", fontSize: "18px", fontWeight: "bold"}}>Description</TableCell>
-            <TableCell style={{color: "white", fontSize: "18px", fontWeight: "bold"}}>Amount</TableCell>
-            <TableCell style={{color: "white", fontSize: "18px", fontWeight: "bold"}}>Group</TableCell>
-            <TableCell style={{color: "white", fontSize: "18px", fontWeight: "bold"}}>Date Paid</TableCell>
-            <TableCell style={{color: "white", fontSize: "18px", fontWeight: "bold"}}>Split</TableCell>
-            <TableCell style={{color: "white", fontSize: "18px", fontWeight: "bold"}}>Amount Owed</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-  {loading && (
-    <TableRow>
-      <TableCell colSpan={4}>Loading...</TableCell>
-    </TableRow>
-  )}
-  {!loading && expenses.length === 0 && fetchAttempted && (
-    <TableRow>
-      <TableCell colSpan={4}>No expenses found</TableCell>
-    </TableRow>
-  )}
-  {!loading &&
-    expenses.length > 0 &&
-    sortExpenses(expenses).map((expense, index) => (
-      <TableRow key={expense.ExpenseId}>
-        <TableCell>{expense.Description}</TableCell>
-        <TableCell>${expense.Amount}</TableCell>
-        <TableCell>{expense.GroupName}</TableCell>
-        <TableCell>{new Date(expense.DatePaid).toLocaleDateString()}</TableCell>
-        <TableCell>
-          {expenseSplit[index]?.map((split, idx) => {
-            return (
-              <div key={idx}>
-                <p>{split.Percentage}%</p>
+      <ul className="list-unstyled">
+        {loading && <h3 style={{ color: "white" }}>Loading...</h3>}
+        {!loading && expenses.length === 0 && fetchAttempted && (
+          <h3 style={{ color: "white" }}>No expenses found</h3>
+        )}
+        {!loading &&
+          expenses.length > 0 &&
+          sortExpenses(expenses).map((expense) => (
+            <li key={expense.ExpenseId} className="expense-item">
+              <div className="expense-details">
+                <p className="expense-description">
+                  Description: {expense.Description}
+                </p>
+                <ul>
+                  {generateUserListItems(
+                    expense.OtherMemberUserIds,
+                    expense.OtherMemberDisplayNames,
+                    expense.OtherMemberEmails,
+                    currentUser
+                  )}
+                  {generateUserListItems(
+                    [expense.ExpenseMakerUserId],
+                    [expense.ExpenseMakerDisplayName],
+                    [expense.ExpenseMakerEmail],
+                    currentUser
+                  )}
+                </ul>
+                <p className="expense-amount">Amount: ${expense.Amount}</p>
+                <p className="expense-group">Group: {expense.GroupName}</p>
+                <p className="expense-date">
+                  Date Made:{" "}
+                  {new Date(expense.DatePaid).toLocaleDateString(undefined, {
+                    timeZone: "UTC",
+                  })}
+                </p>
+                {expenseSplit
+                  .find((splitArray) =>
+                    splitArray.some(
+                      (split) => split.ExpenseId === expense.ExpenseId
+                    )
+                  )
+                  ?.map((split, idx) => {
+                    const amountOwed =
+                      (expense.Amount * Number(split.Percentage)) / 100;
+                    return (
+                      <div key={idx}>
+                        <p className="expense-amount">
+                          Percentage: {split.Percentage}%
+                        </p>
+                        <p className="expense-amount">
+                          Amount owed: ${amountOwed.toFixed(2)}
+                        </p>
+                      </div>
+                    );
+                  })}
+                {settlementInfo
+                  .filter((info) => info.ExpenseId === expense.ExpenseId)
+                  .map((info, idx) =>
+                    info.SettlementStatus === "Pending" &&
+                    currentUser &&
+                    currentUser.UserId === expense.ExpenseMakerUserId ? (
+                      <div key={idx}>
+                        <button
+                          className="btn btn-success"
+                          onClick={() =>
+                            handleAcceptSettlement(expense.ExpenseId)
+                          }
+                        >
+                          Accept
+                        </button>
+                        <button
+                          className="btn btn-danger"
+                          onClick={() =>
+                            handleAcceptSettlement(expense.ExpenseId)
+                          }
+                        >
+                          Decline
+                        </button>
+                      </div>
+                    ) : null
+                  )}
+                {!currentUser ||
+                currentUser.UserId !== expense.ExpenseMakerUserId ? (
+                  <button
+                    className="btn btn-primary"
+                    data-bs-toggle="modal"
+                    data-bs-target={`#exampleModal-${expense.ExpenseId}`}
+                    onClick={() => {
+                      setSelectedExpense(expense);
+                      setSettlementAmount(
+                        (expense.Amount *
+                          Number(
+                            expenseSplit
+                              .find((splitArray) =>
+                                splitArray.some(
+                                  (split) =>
+                                    split.ExpenseId === expense.ExpenseId
+                                )
+                              )
+                              ?.find(
+                                (split) =>
+                                  split.ExpenseId === expense.ExpenseId
+                              )?.Percentage
+                          )) /
+                          100
+                      );
+                      setEmail(expense.ExpenseMakerEmail);
+                      setSelectedUserId(expense.ExpenseMakerUserId);
+                    }}
+                  >
+                    Settle Expense
+                  </button>
+                ) : null}
               </div>
-            );
-          })}
-        </TableCell>
-        <TableCell>
-          {expenseSplit[index]?.map((split, idx) => {
-            // Calculate the amount owed based on the percentage
-            const amountOwed = (expense.Amount * Number(split.Percentage)) / 100;
-            return (
-              <div key={idx}>
-                <p>${amountOwed.toFixed(2)}</p>
+            </li>
+          ))}
+      </ul>
+
+      {expenses.map((expense) => (
+        <div
+          key={expense.ExpenseId}
+          className="modal fade"
+          id={`exampleModal-${expense.ExpenseId}`}
+          tabIndex={-1}
+          aria-labelledby="exampleModalLabel"
+          aria-hidden="true"
+        >
+          <div className="modal-dialog">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title" id="exampleModalLabel">
+                  Settle Expense
+                </h5>
+                <button
+                  type="button"
+                  className="btn-close"
+                  data-bs-dismiss="modal"
+                  aria-label="Close"
+                ></button>
               </div>
-            );
-          })}
-        </TableCell>
-      </TableRow>
-    ))}
-</TableBody>
-      </Table>
-      </TableContainer>
+              <div className="modal-body">
+                <div className="mb-3">
+                  <label htmlFor="inputEmail" className="form-label">
+                    Email
+                  </label>
+                  <select
+                    className="form-select"
+                    id="inputEmail"
+                    value={email}
+                    onChange={(e) => {
+                      const selectedEmail = e.target.value;
+                      setEmail(selectedEmail);
+                      setSelectedUserId(expense.ExpenseMakerUserId);
+                    }}
+                  >
+                    <option value="">Select an email</option>
+                    <option value={expense.ExpenseMakerEmail}>
+                      {expense.ExpenseMakerEmail}
+                    </option>
+                  </select>
+                </div>
+
+                <div className="mb-3">
+                  <label htmlFor="inputAmount" className="form-label">
+                    Settlement Amount
+                  </label>
+                  <input
+                    type="number"
+                    className="form-control"
+                    id="inputAmount"
+                    value={settlementAmount}
+                    onChange={(e) =>
+                      setSettlementAmount(Number(e.target.value))
+                    }
+                  />
+                </div>
+              </div>
+              <div className="mb-3 image-container">
+              <a href="https://www.rbc.com" target="_blank" rel="noopener noreferrer">
+                <img src={rbcLogo} alt="rbc" className="modal-image" />
+              </a>
+              <a href="https://www.cibc.com" target="_blank" rel="noopener noreferrer">
+                <img src={cibcLogo} alt="cibc" className="modal-image" />
+              </a>
+              <a href="https://www.scotiabank.com" target="_blank" rel="noopener noreferrer">
+                <img src={scotiabankLogo} alt="scotiabank" className="modal-image" />
+              </a>
+              <a href="https://www.td.com" target="_blank" rel="noopener noreferrer">
+                <img src={tdLogo} alt="td" className="modal-image" />
+              </a>
+              </div>
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  data-bs-dismiss="modal"
+                  onClick={() => setSelectedExpense(null)}
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={handleSettleExpense}
+                  data-bs-dismiss="modal"
+                  disabled={loadingSettlement}
+                >
+                  {loadingSettlement ? (
+                    <CircularProgress size={24} color="inherit" />
+                  ) : (
+                    "Confirm Payment"
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

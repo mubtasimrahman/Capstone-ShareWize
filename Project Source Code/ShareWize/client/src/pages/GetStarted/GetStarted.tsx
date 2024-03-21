@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import GroupForm from "./components/GroupForm/GroupForm";
 import UserForm from "./components/UserForm/UserForm";
 import ExpenseForm from "./components/ExpenseForm/ExpenseForm";
@@ -9,11 +9,11 @@ import axios from "axios";
 import "./GetStarted.css";
 import Button from '@mui/material/Button';
 
+// Define interfaces for Group and userObject
 interface Group {
   GroupId: number;
   GroupName: string;
 }
-
 
 interface userObject {
   UserId: number;
@@ -22,8 +22,9 @@ interface userObject {
   Email: string;
 }
 
-
+// GetStarted component
 function GetStarted() {
+  // State variables
   const [groupId, setGroupId] = useState<number | null>(null);
   const [currentUser, setCurrentUser] = useState<userObject>({
     UserId: 1,
@@ -31,28 +32,22 @@ function GetStarted() {
     DisplayName: "test",
     Email: "test",
   });
-
   const [showUserForm, setShowUserForm] = useState(false); // State to control rendering of UserForm
-
   const [showGroupForm, setShowGroupForm] = useState(false); // State to control rendering of GroupForm
-  const [showForms, setShowForms] = useState(false); 
+  const [showForms, setShowForms] = useState(false);
   const [groupName, setGroupName] = useState(""); // Lifted state for groupName
-
+  const [refreshMyGroups, setRefreshMyGroups] = useState(false); // State to trigger refresh of MyGroups component
   const googleId = useSelector((state: RootState) => state.auth.user?.sub);
 
+  // Fetch user data from backend on component mount or googleId change
   useEffect(() => {
     if (googleId) {
-      // Move the logic directly into this useEffect
       const fetchUser = async () => {
         try {
           const response = await axios.get<userObject>(
             `http://localhost:8000/getUser/${googleId}`
           );
           setCurrentUser(response.data);
-          // console.log(
-          //   "Current user wont be logged here as useEffect is async:",
-          //   currentUser
-          // );
         } catch (error) {
           console.error("Error fetching user:", error);
         }
@@ -64,22 +59,25 @@ function GetStarted() {
     }
   }, [googleId]);
 
+  // Event handler for group creation
   const handleGroupCreated = () => {
-    // Set the state to show the next form(s)
-    console.log("group created");
-    setShowUserForm(true);
+    setShowUserForm(true); // Show UserForm
+    setRefreshMyGroups(true); // Trigger refresh of MyGroups component
   };
 
+  // Event handler for clicking 'Create Group' button
   const handleCreateGroupClick = () => {
-    setShowGroupForm(true);
+    setShowGroupForm(true); // Show GroupForm
   };
 
+  // Event handler for clicking on a group
   const handleGroupClick = (group: Group) => {
-    setShowForms(true);
-    setGroupId(group.GroupId) 
-    setGroupName(group.GroupName)
+    setShowForms(true); // Show UserForm and ExpenseForm
+    setGroupId(group.GroupId);
+    setGroupName(group.GroupName);
   };
 
+  // Event handler for changing group name
   const handleGroupNameChange = (name: string) => {
     setGroupName(name); // Update groupName in the parent component
   };
@@ -87,8 +85,10 @@ function GetStarted() {
   return (
     <div className="container-fluid">
       <div style={{ display: "flex", justifyContent: "center" }}>
-        <div style={{ flex: "0 0 33%", marginRight: "20px" }}>
+        <div style={{ textAlign: "left" }}>
+          {/* MyGroups component */}
           <MyGroups
+            key={refreshMyGroups ? "refresh" : "no-refresh"} // Add key to force re-render of MyGroups
             onGroupClick={handleGroupClick}
             userId={currentUser.UserId}
           />
@@ -102,12 +102,22 @@ function GetStarted() {
             color: "green",
           }}
         >
-          { (
-            !groupId &&
-            !showGroupForm && !showForms && (
-              <Button style={{backgroundColor:"#198754"}} variant="contained" onClick={handleCreateGroupClick}>Create Group</Button>
-            )
+          {/* 'Create Group' button */}
+          {!groupId && !showGroupForm && !showForms && (
+            <Button
+              style={{
+                marginTop: "0px",
+                backgroundColor: "#198754",
+                fontSize: "1.2rem", // Increase font size
+                padding: "15px 30px", // Increase padding
+              }}
+              variant="contained"
+              onClick={handleCreateGroupClick}
+            >
+              Create Group
+            </Button>
           )}
+          {/* GroupForm */}
           {showGroupForm && (
             <GroupForm
               userId={currentUser.UserId}
@@ -116,12 +126,12 @@ function GetStarted() {
               onGroupNameChange={handleGroupNameChange}
             />
           )}
-          {(groupId||showForms) && (
-            <div className="top-centered-content">
-              Group {groupName}
-            </div>
+          {/* Group name display */}
+          {(groupId || showForms) && (
+            <div className="top-centered-content">{groupName}</div>
           )}
-          {(groupId||showForms) && (
+          {/* UserForm and ExpenseForm */}
+          {(groupId || showForms) && (
             <div className="forms-container">
               <div className="form">
                 <UserForm groupId={groupId} userId={currentUser.UserId} />

@@ -2,6 +2,9 @@ import express, { Request, Response } from "express";
 import * as sql from "mssql";
 import { OAuth2Client, TokenPayload } from "google-auth-library";
 import cors from "cors";
+import dotenv from 'dotenv';
+dotenv.config();
+
 
 const app = express();
 const port = 8000;
@@ -11,10 +14,11 @@ interface User {
   Email: string;
 }
 
-// Update cors configuration
+//for sake of the person marking, the .env isnt required
+
 app.use(
   cors({
-    origin: "http://localhost:5173", // Update with your client's origin
+    origin: process.env.CLIENT_ORIGIN || "http://localhost:5173", // Update with your client's origin
     methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
     credentials: true,
     optionsSuccessStatus: 204,
@@ -23,25 +27,53 @@ app.use(
 );
 
 const config: sql.config = {
-  user: "adminsharewize",
-  password: "Sh4reW1ze123.",
-  server: "sharewize-1.cci3zj5kplom.ca-central-1.rds.amazonaws.com",
-  port: 1433,
-  database: "ShareWize", // Specify your database name here
+  user: process.env.DB_USER || "adminsharewize",
+  password: process.env.DB_PASSWORD || "Sh4reW1ze123.",
+  server: process.env.DB_SERVER || "sharewize-1.cci3zj5kplom.ca-central-1.rds.amazonaws.com",
+  port: parseInt(process.env.DB_PORT || "1433"),
+  database: process.env.DB_NAME || "ShareWize", 
   options: {
     encrypt: true,
     trustServerCertificate: true,
   },
 };
 
-const CLIENT_ID =
-  "507009074308-bal2u8rup2p4154mp623sg8v197sn23n.apps.googleusercontent.com";
+const CLIENT_ID = process.env.CLIENT_ID || "507009074308-bal2u8rup2p4154mp623sg8v197sn23n.apps.googleusercontent.com";
+
+const verifyAndDecodeToken = async (token: string): Promise<TokenPayload> => {
+  const client = new OAuth2Client(CLIENT_ID);
+
+  return client
+    .verifyIdToken({
+      idToken: token,
+      audience: CLIENT_ID,
+    })
+    .then((ticket) => {
+      const payload = ticket.getPayload();
+
+      // Check if payload is not undefined before accessing its properties
+      if (payload) {
+        const userid = payload.sub;
+        // If needed, perform additional verification or checks here
+        return payload;
+      } else {
+        throw new Error("Payload is undefined");
+      }
+    })
+    .catch((error) => {
+      console.error("Error verifying ID token:", error);
+      throw error;
+    });
+};
+
+//Routes
 
 // Route for the root path
 app.get("/", (req: Request, res: Response) => {
   res.send("Hello, this is the root path!");
 });
 
+//Route for inserting Group's users
 app.post(
   "/groups/:groupId/users",
   cors(),
@@ -72,6 +104,7 @@ app.post(
   }
 );
 
+//Route for getting user by google id
 app.get("/getUser/:googleId", cors(), async (req: Request, res: Response) => {
   const googleId = req.params.googleId;
 
@@ -92,6 +125,7 @@ app.get("/getUser/:googleId", cors(), async (req: Request, res: Response) => {
   }
 });
 
+//Route for creaitng group
 app.post(
   "/createGroup",
   cors(),
@@ -152,66 +186,7 @@ app.post(
   }
 );
 
-// app.post(
-//   "/createGroup",
-//   cors(),
-//   express.json(),
-//   async (req: Request, res: Response) => {
-//     const { groupName, userId } = req.body; // Modified to accept userId instead of googleId
-
-//     // Check if required parameters are present
-//     if (!groupName || !userId) {
-//       return res.status(400).send("Group name and user ID are required");
-//     }
-
-//     try {
-//       const existingGroupID = await getGroupID(groupName);
-
-//       if (existingGroupID !== null) {
-//         // If the group already exists, return a conflict response
-//         return res.status(409).send({ message: "Group already exists", groupName });
-//       }
-
-//       // Start a transaction to ensure atomicity
-//       const pool = await sql.connect(config);
-//       const transaction = new sql.Transaction(pool);
-//       await transaction.begin();
-
-//       try {
-//         // Insert the group into the database
-//         const request = new sql.Request(transaction);
-//         await request.input("groupName", sql.NVarChar, groupName)
-//                      .query("INSERT INTO Groups (GroupName) VALUES (@groupName)");
-
-//         // Get the group ID after successfully inserting the group
-//         const groupID = await getGroupID(groupName);
-
-//         // Insert the user into the group as a member
-//         await request.input("userId", sql.Int, userId)
-//                      .input("groupId", sql.Int, groupID)
-//                      .query("INSERT INTO GroupMembershipsExample (UserId, GroupId) VALUES (@userId, @groupId)");
-
-//         // Commit the transaction
-//         await transaction.commit();
-
-//         // Respond with success and send groupID
-//         res.status(201).send({ message: "Group created successfully", groupID });
-//       } catch (insertError) {
-//         // Rollback the transaction if an error occurs during insertion
-//         await transaction.rollback();
-//         throw insertError;
-//       } finally {
-//         // Release the connection
-//         await pool.close();
-//       }
-//     } catch (error) {
-//       console.error("Error creating group:", error);
-//       res.status(500).send("Internal Server Error");
-//     }
-//   }
-// );
-
-// Handling logging in
+// Route for login
 app.post("/api", cors(), express.json(), (req: Request, res: Response) => {
   const token = req.body.token as string;
   console.log("Received request at /api");
@@ -239,35 +214,389 @@ app.post("/api", cors(), express.json(), (req: Request, res: Response) => {
     });
 });
 
-const verifyAndDecodeToken = async (token: string): Promise<TokenPayload> => {
-  const client = new OAuth2Client(CLIENT_ID);
 
-  return client
-    .verifyIdToken({
-      idToken: token,
-      audience: CLIENT_ID,
-    })
-    .then((ticket) => {
-      const payload = ticket.getPayload();
+//Route for settling expense
+app.post(
+  "/settleExpense",
+  cors(),
+  express.json(),
+  async (req: Request, res: Response) => {
+    try {
+      const { expenseId, amount, payerUserId, payeeUserId } = req.body;
+      console.log(req.body);
 
-      // Check if payload is not undefined before accessing its properties
-      if (payload) {
-        const userid = payload.sub;
-
-        // If needed, perform additional verification or checks here
-
-        return payload;
-      } else {
-        throw new Error("Payload is undefined");
+      // Validate request parameters
+      if (!expenseId || typeof amount !== "number") {
+        return res.status(400).send("Invalid request parameters");
       }
-    })
-    .catch((error) => {
-      console.error("Error verifying ID token:", error);
-      throw error;
-    });
-};
 
-//for first time logging in
+      // Connect to the database
+      const pool = await sql.connect(config);
+
+      // Fetch the corresponding expense split details using expenseId
+      const splitResult = await pool
+        .request()
+        .input("expenseId", sql.Int, expenseId)
+        .input("payerUserId", sql.Int, payerUserId).query(`
+        SELECT es.ExpenseSplitId, es.Percentage, e.Amount AS ActualAmount
+        FROM ExpenseSplit es
+        INNER JOIN Expenses e ON es.ExpenseId = e.ExpenseId
+        WHERE es.ExpenseId = @expenseId
+          AND es.UserId = @payerUserId
+        `);
+
+      if (splitResult.recordset.length === 0) {
+        return res.status(404).send("Expense split not found");
+      }
+
+      console.log(splitResult);
+
+      const expenseSplitId = splitResult.recordset[0].ExpenseSplitId;
+      const percentage = splitResult.recordset[0].Percentage;
+      const actualAmount = splitResult.recordset[0].ActualAmount;
+
+      // Calculate the amount for the expense split
+      const splitAmount = (actualAmount * percentage) / 100;
+
+      // Start a transaction
+      const transaction = new sql.Transaction(pool);
+      await transaction.begin();
+
+      try {
+        // Insert a record into ExpenseSettlements table with status 'Pending'
+        const insertQuery = `
+          INSERT INTO ExpenseSettlements (ExpenseSplitId, PayerUserId, PayeeUserId, Amount, Status)
+          VALUES (@expenseSplitId, @payerUserId, @payeeUserId, @amount, 'Pending');
+        `;
+        const request = new sql.Request(transaction);
+        request.input("expenseSplitId", sql.Int, expenseSplitId);
+        request.input("payerUserId", sql.Int, payerUserId);
+        request.input("payeeUserId", sql.Int, payeeUserId);
+        request.input("amount", sql.Decimal(10, 2), amount);
+        await request.query(insertQuery);
+
+        // Commit the transaction
+        await transaction.commit();
+
+        // Send response
+        res.status(200).send("Expense settlement request sent successfully");
+      } catch (error) {
+        // Rollback transaction on error
+        await transaction.rollback();
+        console.error("Error settling expense:", error);
+        res.status(500).send("Internal Server Error");
+      } finally {
+        // Close the SQL Server connection
+        await pool.close();
+      }
+    } catch (error) {
+      console.error("Error connecting to the database:", error);
+      res.status(500).send("Internal Server Error");
+    }
+  }
+);
+
+//Route for adding user to group
+app.post(
+  "/addUserToGroup",
+  cors(),
+  express.json(),
+  (req: Request, res: Response) => {
+    const { groupId, userId } = req.body;
+
+    console.log("Received request at /addUserToGroup");
+
+    if (!groupId || !userId) {
+      return res.status(400).send("Group ID and user ID are required");
+    }
+
+    insertUserIntoGroup(groupId, userId)
+      .then(() => {
+        // Additional logic or response if needed
+        res.status(201).send("User added to group successfully");
+      })
+      .catch((error) => {
+        console.error("Error adding user to group:", error);
+        res.status(500).send("Internal Server Error");
+      })
+      .finally(() => {
+        // Additional cleanup or finalization logic here
+      });
+  }
+);
+
+
+// Route for getting all groups for a user
+app.get("/myGroups", cors(), async (req: Request, res: Response) => {
+  const googleId = req.query.googleId as string; // Assuming googleId is provided as a query parameter
+
+  if (!googleId) {
+    return res.status(400).send("Google ID is missing");
+  }
+
+  try {
+    const userGroups = await getUserGroupsByGoogleId(googleId);
+
+    // Respond with the list of groups
+    res.json(userGroups);
+  } catch (error) {
+    console.error("Error fetching user groups:", error);
+    res.status(500).send("Internal Server Error");
+  }
+});
+
+// Route for getting all users in a specific group by group ID
+app.get(
+  "/groups/:groupId/users",
+  cors(),
+  async (req: Request, res: Response) => {
+    const groupId = req.params.groupId; // Extract groupId from params
+
+    if (!groupId) {
+      return res.status(400).send("Group ID is missing");
+    }
+
+    try {
+      const groupUsers = await getUsersInGroupById(groupId);
+
+      // Respond with the list of users in the group
+      res.json(groupUsers);
+    } catch (error) {
+      console.error("Error fetching users in group:", error);
+      res.status(500).send("Internal Server Error");
+    }
+  }
+);
+
+// Route for getting all expenses for a specific group by group ID
+app.get(
+  "/groups/:groupId/expenses",
+  cors(),
+  async (req: Request, res: Response) => {
+    const groupId = req.params.groupId;
+
+    if (!groupId) {
+      return res.status(400).send("Group ID is missing");
+    }
+
+    try {
+      const groupExpenses = await getExpensesByGroupId(groupId);
+
+      // Respond with the list of expenses in the group
+      res.json(groupExpenses);
+    } catch (error) {
+      console.error("Error fetching expenses in group:", error);
+      res.status(500).send("Internal Server Error");
+    }
+  }
+);
+
+//Route for adding an expense to a group
+app.post(
+  "/groups/:groupId/addExpense",
+  cors(),
+  express.json(),
+  async (req: Request, res: Response) => {
+    const groupId = req.params.groupId;
+    const { description, amount, userId, groupUsers, customPercentages } =
+      req.body;
+
+    if (
+      !groupId ||
+      !description ||
+      !amount ||
+      !userId ||
+      !groupUsers ||
+      !customPercentages
+    ) {
+      return res
+        .status(400)
+        .send("One or more required parameters are missing");
+    }
+
+    try {
+      // Trigger insertExpenseIntoDatabase function
+      await insertExpenseIntoDatabase(
+        description,
+        amount,
+        userId,
+        parseInt(groupId),
+        groupUsers,
+        customPercentages
+      );
+
+      // Respond with success message
+      res.status(201).send("Expense inserted into database successfully");
+    } catch (error) {
+      console.error("Error inserting expense into database:", error);
+      res.status(500).send("Internal Server Error");
+    }
+  }
+);
+
+// Route for getting all expenses for a specific user by user ID
+app.get(
+  "/users/:userId/expenses",
+  cors(),
+  async (req: Request, res: Response) => {
+    const userId = parseInt(req.params.userId);
+
+    if (isNaN(userId)) {
+      return res.status(400).send("User ID is missing or invalid");
+    }
+
+    try {
+      const userExpenses = await getExpensesByUserId(userId);
+
+      // Respond with the list of expenses for the user
+      res.json(userExpenses);
+    } catch (error) {
+      console.error("Error fetching expenses for user:", error);
+      res.status(500).send("Internal Server Error");
+    }
+  }
+);
+
+// Route to send a group membership request
+app.post(
+  "/sendGroupMembershipRequest/:groupId",
+  cors(),
+  express.json(),
+  async (req: Request, res: Response) => {
+    const { userId, userEmail } = req.body;
+    const groupId = req.params.groupId;
+
+    if (!userId || !userEmail || !groupId) {
+      return res
+        .status(400)
+        .send("User ID, user email, and group ID are required");
+    }
+
+    try {
+      // Get the user to whom the request is being sent
+      const receiverUser = await getUserByEmail(userEmail);
+
+      if (!receiverUser) {
+        return res.status(404).send("Receiver user not found");
+      }
+
+      // Check if the sender is already a member of the group
+      const isSenderGroupMember = await isUserGroupMember(userId, groupId);
+
+      if (!isSenderGroupMember) {
+        return res.status(403).send("Sender is not a member of the group");
+      }
+
+      // Check if the receiver is already a member of the group
+      const isReceiverGroupMember = await isUserGroupMember(
+        receiverUser.UserId,
+        groupId
+      );
+
+      if (isReceiverGroupMember) {
+        return res
+          .status(409)
+          .send("Receiver is already a member of the group");
+      }
+
+      // Check if a request already exists
+      const existingRequest = await getGroupMembershipRequest(
+        userId,
+        receiverUser.UserId,
+        groupId
+      );
+
+      if (existingRequest) {
+        return res.status(409).send("Request already exists");
+      }
+
+      // Insert the new request into the database
+      await insertGroupMembershipRequest(userId, receiverUser.UserId, groupId);
+
+      res.status(201).send("Request sent successfully");
+    } catch (error) {
+      console.error("Error sending group membership request:", error);
+      res.status(500).send("Internal Server Error");
+    }
+  }
+);
+
+//Route for group requests
+app.get("/groupRequests", cors(), async (req: Request, res: Response) => {
+  const { userId } = req.query;
+
+  if (!userId) {
+    return res.status(400).send("User ID is required");
+  }
+
+  try {
+    const requests = await getGroupRequestsByUserId(Number(userId));
+    res.status(200).json(requests);
+  } catch (error) {
+    console.error("Error fetching group requests:", error);
+    res.status(500).send("Internal Server Error");
+  }
+});
+
+//Route for responding to group requests
+app.post(
+  "/respondToGroupMembershipRequest",
+  cors(),
+  express.json(),
+  async (req: Request, res: Response) => {
+    const { requestId, response } = req.body;
+
+    if (!requestId || !response) {
+      return res.status(400).send("Request ID and response are required");
+    }
+
+    try {
+      // Respond to the group membership request and add the group if the response is "Accept"
+      await respondToGroupMembershipRequest(Number(requestId), response);
+      res.status(200).send("Response processed successfully");
+    } catch (error) {
+      console.error("Error responding to group membership request:", error);
+      res.status(500).send("Internal Server Error");
+    }
+  }
+);
+
+//Route to get the expense split
+app.get(
+  "/users/:userId/expenseSplit",
+  cors(),
+  async (req: Request, res: Response) => {
+    const userId = req.params.userId;
+    const expenseIds = req.query.expenseIds; // Retrieve expense IDs from query params
+
+    if (!userId || !expenseIds) {
+      console.error("User ID or Expense IDs are missing");
+      return res.status(400).send("User ID or Expense IDs are missing");
+    }
+
+    try {
+      const expenseIdArray = Array.isArray(expenseIds)
+        ? (expenseIds as string[]).map((id) => parseInt(id))
+        : [parseInt(expenseIds as string)];
+
+      // Fetch expense split data for the user and expense IDs
+      const userExpenseSplit = await getExpenseSplitByUserIdAndExpenseIds(
+        parseInt(userId),
+        expenseIdArray
+      );
+
+      // Respond with the expense split data for the user and expense IDs
+      res.json(userExpenseSplit);
+    } catch (error) {
+      console.error("Error fetching expense split for user:", error);
+      res.status(500).send("Internal Server Error");
+    }
+  }
+);
+
+//Functions for Database manipulation
+
+//Function for first log in
 const insertUserIntoDatabase = async (
   userObject: TokenPayload
 ): Promise<void> => {
@@ -308,35 +637,7 @@ const insertUserIntoDatabase = async (
   }
 };
 
-// Updated server-side code with new endpoint to add a user to a group
-app.post(
-  "/addUserToGroup",
-  cors(),
-  express.json(),
-  (req: Request, res: Response) => {
-    const { groupId, userId } = req.body;
-
-    console.log("Received request at /addUserToGroup");
-
-    if (!groupId || !userId) {
-      return res.status(400).send("Group ID and user ID are required");
-    }
-
-    insertUserIntoGroup(groupId, userId)
-      .then(() => {
-        // Additional logic or response if needed
-        res.status(201).send("User added to group successfully");
-      })
-      .catch((error) => {
-        console.error("Error adding user to group:", error);
-        res.status(500).send("Internal Server Error");
-      })
-      .finally(() => {
-        // Additional cleanup or finalization logic here
-      });
-  }
-);
-
+//Function to insert Group to a database
 const insertGroupIntoDatabase = async (groupName: string): Promise<number> => {
   let pool: sql.ConnectionPool;
 
@@ -375,6 +676,7 @@ const insertGroupIntoDatabase = async (groupName: string): Promise<number> => {
     });
 };
 
+//Function to get the user by google is
 const getUserByGoogleId = async (googleId: string): Promise<any | null> => {
   let pool: sql.ConnectionPool | null = null;
 
@@ -400,6 +702,7 @@ const getUserByGoogleId = async (googleId: string): Promise<any | null> => {
   }
 };
 
+//function to get a group's id
 async function getGroupID(groupName: string) {
   try {
     const pool = await sql.connect(config);
@@ -420,6 +723,8 @@ async function getGroupID(groupName: string) {
     throw error;
   }
 }
+
+//Function to insert an expense into database
 const insertExpenseIntoDatabase = async (
   description: string,
   amount: number,
@@ -464,13 +769,16 @@ const insertExpenseIntoDatabase = async (
         const splitPromises = groupUsers.map(async (user) => {
           const percentage =
             customPercentages[user.UserId] || 100 / groupUsers.length;
+          const status = user.UserId === userId ? "Settled" : "Pending"; // Set status based on user
           await pool
             .request()
             .input("expenseId", sql.Int, expenseId)
             .input("userId", sql.Int, user.UserId)
-            .input("percentage", sql.Decimal(5, 2), percentage).query(`
-              INSERT INTO ExpenseSplit (ExpenseId, UserId, Percentage)
-              VALUES (@expenseId, @userId, @percentage)
+            .input("percentage", sql.Decimal(5, 2), percentage)
+            .input("status", sql.NVarChar(20), status) // Include status input
+            .query(`
+              INSERT INTO ExpenseSplit (ExpenseId, UserId, Percentage, Status)
+              VALUES (@expenseId, @userId, @percentage, @status)
             `);
         });
 
@@ -495,6 +803,7 @@ const insertExpenseIntoDatabase = async (
     });
 };
 
+//Function to unsert user into group by their email
 const insertUserIntoGroupByEmail = async (
   groupId: string,
   userEmail: string
@@ -558,25 +867,6 @@ const insertUserIntoGroupByEmail = async (
     });
 };
 
-// Endpoint to get all groups for a user
-app.get("/myGroups", cors(), async (req: Request, res: Response) => {
-  const googleId = req.query.googleId as string; // Assuming googleId is provided as a query parameter
-
-  if (!googleId) {
-    return res.status(400).send("Google ID is missing");
-  }
-
-  try {
-    const userGroups = await getUserGroupsByGoogleId(googleId);
-
-    // Respond with the list of groups
-    res.json(userGroups);
-  } catch (error) {
-    console.error("Error fetching user groups:", error);
-    res.status(500).send("Internal Server Error");
-  }
-});
-
 // Function to get all groups for a user by Google ID
 const getUserGroupsByGoogleId = async (googleId: string): Promise<any[]> => {
   let pool: sql.ConnectionPool | undefined; // Initialize pool to undefined
@@ -608,29 +898,6 @@ const getUserGroupsByGoogleId = async (googleId: string): Promise<any[]> => {
   }
 };
 
-// Endpoint to get all users in a specific group by group ID
-app.get(
-  "/groups/:groupId/users",
-  cors(),
-  async (req: Request, res: Response) => {
-    const groupId = req.params.groupId; // Extract groupId from params
-
-    if (!groupId) {
-      return res.status(400).send("Group ID is missing");
-    }
-
-    try {
-      const groupUsers = await getUsersInGroupById(groupId);
-
-      // Respond with the list of users in the group
-      res.json(groupUsers);
-    } catch (error) {
-      console.error("Error fetching users in group:", error);
-      res.status(500).send("Internal Server Error");
-    }
-  }
-);
-
 // Function to get all users in a specific group by group ID
 const getUsersInGroupById = async (groupId: string): Promise<any[]> => {
   let pool: sql.ConnectionPool | undefined;
@@ -661,71 +928,6 @@ const getUsersInGroupById = async (groupId: string): Promise<any[]> => {
   }
 };
 
-// Endpoint to get all expenses for a specific group by group ID
-app.get(
-  "/groups/:groupId/expenses",
-  cors(),
-  async (req: Request, res: Response) => {
-    const groupId = req.params.groupId;
-
-    if (!groupId) {
-      return res.status(400).send("Group ID is missing");
-    }
-
-    try {
-      const groupExpenses = await getExpensesByGroupId(groupId);
-
-      // Respond with the list of expenses in the group
-      res.json(groupExpenses);
-    } catch (error) {
-      console.error("Error fetching expenses in group:", error);
-      res.status(500).send("Internal Server Error");
-    }
-  }
-);
-
-app.post(
-  "/groups/:groupId/addExpense",
-  cors(),
-  express.json(),
-  async (req: Request, res: Response) => {
-    const groupId = req.params.groupId;
-    const { description, amount, userId, groupUsers, customPercentages } =
-      req.body;
-
-    if (
-      !groupId ||
-      !description ||
-      !amount ||
-      !userId ||
-      !groupUsers ||
-      !customPercentages
-    ) {
-      return res
-        .status(400)
-        .send("One or more required parameters are missing");
-    }
-
-    try {
-      // Trigger insertExpenseIntoDatabase function
-      await insertExpenseIntoDatabase(
-        description,
-        amount,
-        userId,
-        parseInt(groupId),
-        groupUsers,
-        customPercentages
-      );
-
-      // Respond with success message
-      res.status(201).send("Expense inserted into database successfully");
-    } catch (error) {
-      console.error("Error inserting expense into database:", error);
-      res.status(500).send("Internal Server Error");
-    }
-  }
-);
-
 // Function to get all expenses in a specific group by group ID
 const getExpensesByGroupId = async (groupId: string): Promise<any[]> => {
   let pool: sql.ConnectionPool | undefined;
@@ -755,95 +957,6 @@ const getExpensesByGroupId = async (groupId: string): Promise<any[]> => {
     }
   }
 };
-
-// Endpoint to get all expenses for a specific user by user ID
-app.get(
-  "/users/:userId/expenses",
-  cors(),
-  async (req: Request, res: Response) => {
-    const userId = parseInt(req.params.userId);
-
-    if (isNaN(userId)) {
-      return res.status(400).send("User ID is missing or invalid");
-    }
-
-    try {
-      const userExpenses = await getExpensesByUserId(userId);
-
-      // Respond with the list of expenses for the user
-      res.json(userExpenses);
-    } catch (error) {
-      console.error("Error fetching expenses for user:", error);
-      res.status(500).send("Internal Server Error");
-    }
-  }
-);
-
-// Server-Side Code (Express.js and SQL Server)
-
-// Endpoint to send a group membership request
-app.post(
-  "/sendGroupMembershipRequest/:groupId",
-  cors(),
-  express.json(),
-  async (req: Request, res: Response) => {
-    const { userId, userEmail } = req.body;
-    const groupId = req.params.groupId;
-
-    if (!userId || !userEmail || !groupId) {
-      return res
-        .status(400)
-        .send("User ID, user email, and group ID are required");
-    }
-
-    try {
-      // Get the user to whom the request is being sent
-      const receiverUser = await getUserByEmail(userEmail);
-
-      if (!receiverUser) {
-        return res.status(404).send("Receiver user not found");
-      }
-
-      // Check if the sender is already a member of the group
-      const isSenderGroupMember = await isUserGroupMember(userId, groupId);
-
-      if (!isSenderGroupMember) {
-        return res.status(403).send("Sender is not a member of the group");
-      }
-
-      // Check if the receiver is already a member of the group
-      const isReceiverGroupMember = await isUserGroupMember(
-        receiverUser.UserId,
-        groupId
-      );
-
-      if (isReceiverGroupMember) {
-        return res
-          .status(409)
-          .send("Receiver is already a member of the group");
-      }
-
-      // Check if a request already exists
-      const existingRequest = await getGroupMembershipRequest(
-        userId,
-        receiverUser.UserId,
-        groupId
-      );
-
-      if (existingRequest) {
-        return res.status(409).send("Request already exists");
-      }
-
-      // Insert the new request into the database
-      await insertGroupMembershipRequest(userId, receiverUser.UserId, groupId);
-
-      res.status(201).send("Request sent successfully");
-    } catch (error) {
-      console.error("Error sending group membership request:", error);
-      res.status(500).send("Internal Server Error");
-    }
-  }
-);
 
 // Helper function to check if a user is a member of a group
 const isUserGroupMember = async (
@@ -949,44 +1062,7 @@ const getUserByEmail = async (email: string): Promise<any> => {
   }
 };
 
-app.get("/groupRequests", cors(), async (req: Request, res: Response) => {
-  const { userId } = req.query;
-
-  if (!userId) {
-    return res.status(400).send("User ID is required");
-  }
-
-  try {
-    const requests = await getGroupRequestsByUserId(Number(userId));
-    res.status(200).json(requests);
-  } catch (error) {
-    console.error("Error fetching group requests:", error);
-    res.status(500).send("Internal Server Error");
-  }
-});
-
-app.post(
-  "/respondToGroupMembershipRequest",
-  cors(),
-  express.json(),
-  async (req: Request, res: Response) => {
-    const { requestId, response } = req.body;
-
-    if (!requestId || !response) {
-      return res.status(400).send("Request ID and response are required");
-    }
-
-    try {
-      // Respond to the group membership request and add the group if the response is "Accept"
-      await respondToGroupMembershipRequest(Number(requestId), response);
-      res.status(200).send("Response processed successfully");
-    } catch (error) {
-      console.error("Error responding to group membership request:", error);
-      res.status(500).send("Internal Server Error");
-    }
-  }
-);
-
+//Function to respond to the group memebrship request
 const respondToGroupMembershipRequest = async (
   requestId: number,
   response: string
@@ -1064,6 +1140,7 @@ const respondToGroupMembershipRequest = async (
   }
 };
 
+//Function to get Group requests for a user
 const getGroupRequestsByUserId = async (userId: number): Promise<number[]> => {
   let pool: sql.ConnectionPool | undefined;
 
@@ -1098,16 +1175,38 @@ const getExpensesByUserId = async (userId: number): Promise<any[]> => {
 
     // Query to get all expenses for the specified user by user ID
     const result = await pool.request().input("userId", sql.Int, userId).query(`
-        SELECT g.GroupName, g.GroupId, e.Description, e.Amount, e.DatePaid, e.ExpenseId
-        FROM Expenses e 
-        INNER JOIN Groups g ON g.GroupId = e.GroupId
-        INNER JOIN GroupMembershipsExample m ON e.GroupId = m.GroupId
-        WHERE m.UserId = @userId
+    SELECT g.GroupName, g.GroupId, e.Description, e.Amount, e.DatePaid, e.ExpenseId,
+    u.DisplayName AS ExpenseMakerDisplayName, u.Email AS ExpenseMakerEmail,u.UserId AS ExpenseMakerUserId,
+    STRING_AGG(u2.DisplayName, ', ') AS OtherMemberDisplayNames,
+    STRING_AGG(u2.Email, ', ') AS OtherMemberEmails,
+    STRING_AGG(u2.UserId, ', ') AS OtherMemberUserIds
+FROM Expenses e 
+INNER JOIN Groups g ON g.GroupId = e.GroupId
+INNER JOIN GroupMembershipsExample m ON e.GroupId = m.GroupId
+INNER JOIN Users u ON e.UserId = u.UserId
+INNER JOIN GroupMembershipsExample m2 ON m2.GroupId = e.GroupId AND m2.UserId != e.UserId
+INNER JOIN Users u2 ON m2.UserId = u2.UserId
+WHERE m.UserId = @userId
+GROUP BY g.GroupName, g.GroupId, e.Description, e.Amount, e.DatePaid, e.ExpenseId, u.DisplayName, u.Email, u.UserId
       `);
 
-    // Return the list of expenses for the user
-    console.log(result.recordset);
-    return result.recordset;
+    // Process the result to format OtherMemberDisplayNames and OtherMemberEmails as arrays
+    const formattedResult = result.recordset.map((row) => {
+      return {
+        ...row,
+        OtherMemberDisplayNames: row.OtherMemberDisplayNames
+          ? row.OtherMemberDisplayNames.split(", ")
+          : [],
+        OtherMemberEmails: row.OtherMemberEmails
+          ? row.OtherMemberEmails.split(", ")
+          : [],
+        OtherMemberUserIds: row.OtherMemberUserIds
+          ? row.OtherMemberUserIds.split(", ")
+          : [],
+      };
+    });
+
+    return formattedResult;
   } catch (error) {
     console.error("Error fetching expenses for user from the database:", error);
     throw error;
@@ -1119,6 +1218,7 @@ const getExpensesByUserId = async (userId: number): Promise<any[]> => {
   }
 };
 
+//Function to insert user into a group
 const insertUserIntoGroup = async (groupId: number, userId: number) => {
   try {
     const pool = await sql.connect(config);
@@ -1140,41 +1240,14 @@ const insertUserIntoGroup = async (groupId: number, userId: number) => {
   }
 };
 
-app.get(
-  "/users/:userId/expenseSplit",
-  cors(),
-  async (req: Request, res: Response) => {
-    const userId = req.params.userId;
-    const expenseIds = req.query.expenseIds; // Retrieve expense IDs from query params
-
-    if (!userId || !expenseIds) {
-      return res.status(400).send("User ID or Expense IDs are missing");
-    }
-
-    try {
-      const expenseIdArray = Array.isArray(expenseIds)
-        ? (expenseIds as string[]).map((id) => parseInt(id))
-        : [parseInt(expenseIds as string)];
-
-      // Fetch expense split data for the user and expense IDs
-      const userExpenseSplit = await getExpenseSplitByUserIdAndExpenseIds(
-        parseInt(userId),
-        expenseIdArray
-      );
-
-      // Respond with the expense split data for the user and expense IDs
-      res.json(userExpenseSplit);
-    } catch (error) {
-      console.error("Error fetching expense split for user:", error);
-      res.status(500).send("Internal Server Error");
-    }
-  }
-);
-
+//Function to get the expense split by the user id and the expense id
 const getExpenseSplitByUserIdAndExpenseIds = async (
   userId: number,
   expenseIds: number[]
 ): Promise<any[]> => {
+  // Check if expenseIds is a single number, convert it to an array
+  const idsArray = Array.isArray(expenseIds) ? expenseIds : [expenseIds];
+
   let pool: sql.ConnectionPool;
 
   // Connect to the database
@@ -1182,6 +1255,7 @@ const getExpenseSplitByUserIdAndExpenseIds = async (
     .connect(config)
     .then(async (p) => {
       pool = p;
+      pool.setMaxListeners(20); // Set the maximum number of listeners to 20
 
       // Query to retrieve expense split data for the user and expense IDs
       const result = await pool
@@ -1189,12 +1263,18 @@ const getExpenseSplitByUserIdAndExpenseIds = async (
         .input("userId", sql.Int, userId)
         .input("expenseIds", sql.NVarChar, expenseIds.join(",")) // Pass expense IDs as a comma-separated string
         .query(`
-          SELECT es.ExpenseId, es.Percentage
-          FROM ExpenseSplit es
-          INNER JOIN Expenses e ON es.ExpenseId = e.ExpenseId
-          WHERE es.UserId = @userId AND es.ExpenseId IN (@expenseIds)
+        SELECT es.ExpenseId, es.Percentage, 
+        ess.Status AS SettlementStatus,
+        ess.Amount AS SettlementAmount,
+        ess.ExpenseSplitId,
+        ess.SettlementDate
+ FROM ExpenseSplit es
+ INNER JOIN Expenses e ON es.ExpenseId = e.ExpenseId
+ LEFT JOIN ExpenseSettlements ess ON es.ExpenseSplitId = ess.ExpenseSplitId
+ WHERE (es.UserId = @userId OR ess.PayeeUserId = @userId) AND es.ExpenseId IN (@expenseIds);
         `);
 
+      console.log(result.recordset,userId);
       return result.recordset;
     })
     .catch((error) => {
@@ -1209,64 +1289,7 @@ const getExpenseSplitByUserIdAndExpenseIds = async (
     });
 };
 
-// app.get(
-//   "/users/:userId/expenses/:expenseId/expenseSplit",
-//   cors(),
-//   async (req: Request, res: Response) => {
-//     const userId = req.params.userId;
-//     const expenseId = req.params.expenseId;
-
-//     if (!userId || !expenseId) {
-//       return res.status(400).send("User ID or Expense ID is missing");
-//     }
-
-//     try {
-//       const userExpenseSplit = await getExpenseSplitByUserIdAndExpenseId(parseInt(userId), parseInt(expenseId));
-
-//       // Respond with the expense split data for the user and expense ID
-//       res.json(userExpenseSplit);
-//     } catch (error) {
-//       console.error("Error fetching expense split for user and expense ID:", error);
-//       res.status(500).send("Internal Server Error");
-//     }
-//   }
-// );
-
-// const getExpenseSplitByUserIdAndExpenseId = async (userId: number, expenseId: number): Promise<any[]> => {
-//   let pool: sql.ConnectionPool;
-
-//   // Connect to the database
-//   return sql
-//     .connect(config)
-//     .then(async (p) => {
-//       pool = p;
-
-//       // Query to retrieve expense split data for the user and expense ID
-//       const result = await pool
-//         .request()
-//         .input("userId", sql.Int, userId)
-//         .input("expenseId", sql.Int, expenseId)
-//         .query(`
-//           SELECT es.ExpenseId, e.Description, e.Amount, es.Percentage
-//           FROM ExpenseSplit es
-//           INNER JOIN Expenses e ON es.ExpenseId = e.ExpenseId
-//           WHERE es.UserId = @userId AND es.ExpenseId = @expenseId
-//         `);
-
-//       return result.recordset;
-//     })
-//     .catch((error) => {
-//       console.error("Error connecting to SQL Server or querying data:", error);
-//       throw error;
-//     })
-//     .finally(() => {
-//       // Close the SQL Server connection
-//       if (pool) {
-//         pool.close();
-//       }
-//     });
-// };
-
+//Server
 app.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);
 });

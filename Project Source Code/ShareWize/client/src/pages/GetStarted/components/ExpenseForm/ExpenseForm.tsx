@@ -2,13 +2,14 @@ import { useState, useEffect } from "react";
 import axios from "axios";
 import "./ExpenseForm.css";
 import Button from "@mui/material/Button";
-import Stack from "@mui/material/Stack";
 
+// Define props interface for ExpenseForm component
 interface ExpenseFormProps {
   groupId: number | null;
   userId: number;
 }
 
+// Define interface for expense object
 interface Expense {
   ExpenseId: string;
   Description: string;
@@ -18,12 +19,16 @@ interface Expense {
   DatePaid: string;
 }
 
+// Define interface for user object
 interface User {
   UserId: number;
+  DisplayName: string;
   Email: string;
 }
 
+// ExpenseForm component
 function ExpenseForm({ groupId, userId }: ExpenseFormProps) {
+  // State variables
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -35,28 +40,19 @@ function ExpenseForm({ groupId, userId }: ExpenseFormProps) {
 
   // Function to fetch and update group users
   const fetchGroupUsers = () => {
-    axios
-      .get(`http://localhost:8000/groups/${groupId}/users`)
-      .then((response) => {
-        setGroupUsers(response.data);
-      })
-      .catch((error) => {
-        console.error("Error fetching group users:", error);
-      });
+    if (groupId) {
+      axios
+        .get(`http://localhost:8000/groups/${groupId}/users`)
+        .then((response) => {
+          setGroupUsers(response.data);
+        })
+        .catch((error) => {
+          console.error("Error fetching group users:", error);
+        });
+    }
   };
 
-  useEffect(() => {
-    if (groupId) {
-      fetchGroupUsers(); // Fetch group users when groupId changes
-    }
-  }, [groupId]);
-
-  useEffect(() => {
-    if (groupId) {
-      fetchExpenses(groupId);
-    }
-  }, [groupId]);
-
+  // Function to fetch expenses
   const fetchExpenses = (groupId: number) => {
     axios
       .get(`http://localhost:8000/groups/${groupId}/expenses`)
@@ -68,16 +64,7 @@ function ExpenseForm({ groupId, userId }: ExpenseFormProps) {
       });
   };
 
-  const handleCustomize = () => {
-    setCustomizing(!customizing);
-  };
-
-  const handleCustomPercentChange = (userId: number, value: string) => {
-    setCustomPercentages({
-      ...customPercentages,
-      [userId]: parseFloat(value),
-    });
-  };
+  // Function to add expense
   const addExpense = (
     description: string,
     amount: number,
@@ -116,6 +103,37 @@ function ExpenseForm({ groupId, userId }: ExpenseFormProps) {
       });
   };
 
+  // Fetch group expenses when groupId changes
+  useEffect(() => {
+    if (groupId) {
+      fetchExpenses(groupId);
+    }
+  }, [groupId]);
+
+  // Fetch group users when groupId changes
+  useEffect(() => {
+    if (groupId) {
+      fetchGroupUsers();
+    }
+  }, [groupId]);
+
+  // Toggle customizing state
+  const handleCustomize = () => {
+    setCustomizing(!customizing);
+    if (!customizing) {
+      fetchGroupUsers(); // Fetch group users when "Show Members" button is clicked
+    }
+  };
+
+  // Update custom percentages
+  const handleCustomPercentChange = (userId: number, value: string) => {
+    setCustomPercentages({
+      ...customPercentages,
+      [userId]: parseFloat(value),
+    });
+  };
+
+  // Add expense
   const handleAddExpense = () => {
     let finalPercentages = customPercentages; // Initialize with custom percentages
 
@@ -149,6 +167,7 @@ function ExpenseForm({ groupId, userId }: ExpenseFormProps) {
     );
   };
 
+  // Render ExpenseForm component
   return (
     <div className={`container-expense ${groupId === null ? "hidden" : ""}`}>
       <div className="section">
@@ -167,13 +186,13 @@ function ExpenseForm({ groupId, userId }: ExpenseFormProps) {
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
         />
-        <Stack spacing={2} direction="row">
+        <div style={{ alignItems: "center", justifyContent: "flex-end" }}>
           <Button
-            style={{ backgroundColor: "#198754" }}
+            style={{ backgroundColor: "#198754", marginRight: "10px" }}
             variant="contained"
             onClick={handleCustomize}
           >
-            Customize Split
+            {customizing ? "Hide Members" : "Show Members"}
           </Button>
           <Button
             style={{ backgroundColor: "#198754" }}
@@ -182,13 +201,13 @@ function ExpenseForm({ groupId, userId }: ExpenseFormProps) {
           >
             Add Expense
           </Button>
-        </Stack>
+        </div>
         {customizing && (
           <div className="section">
-            <h2>Customize Expense Split</h2>
+            <h2>Members and Expense Split</h2>
             {groupUsers.map((user) => (
               <div key={user.UserId}>
-                <p>{user.Email}</p>
+                <p>{user.DisplayName}</p>
                 <input
                   type="text"
                   placeholder="Percentage"
@@ -220,3 +239,4 @@ function ExpenseForm({ groupId, userId }: ExpenseFormProps) {
 }
 
 export default ExpenseForm;
+
